@@ -1,0 +1,719 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SyncU — Inicio</title>
+  <link rel="manifest" href="../manifest.json" />
+  <meta name="theme-color" content="#FF6B00" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --orange:   #FF6B00;
+      --bg:       #0D0D0D;
+      --surface:  #141414;
+      --card:     #1A1A1A;
+      --card2:    #202020;
+      --text:     #FFFFFF;
+      --muted:    #666;
+      --border:   rgba(255,255,255,0.08);
+      --green:    #22C55E;
+      --max-w:    430px;
+    }
+
+    html, body {
+      min-height: 100%; background: var(--bg);
+      color: var(--text); font-family: 'Space Grotesk', sans-serif;
+      overflow-x: hidden;
+    }
+    body::before {
+      content: ''; position: fixed; inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+      pointer-events: none; z-index: 0;
+    }
+
+    /* ── Glow blob ── */
+    .glow-blob {
+      position: fixed; width: 480px; height: 480px;
+      background: radial-gradient(circle, rgba(255,107,0,0.12) 0%, transparent 70%);
+      border-radius: 50%; top: -80px; left: 50%; transform: translateX(-50%);
+      pointer-events: none; z-index: 0;
+      animation: pulsate 7s ease-in-out infinite;
+    }
+    .glow-blob.active-blob {
+      background: radial-gradient(circle, rgba(255,107,0,0.22) 0%, transparent 70%);
+    }
+    @keyframes pulsate {
+      0%,100% { transform: translateX(-50%) scale(1); }
+      50%      { transform: translateX(-50%) scale(1.1); }
+    }
+
+    /* ── Page ── */
+    .page {
+      position: relative; z-index: 1;
+      max-width: var(--max-w); margin: 0 auto;
+      padding-bottom: 5.5rem;
+    }
+
+    /* ── Topbar ── */
+    .topbar {
+      position: sticky; top: 0; z-index: 50;
+      background: rgba(13,13,13,0.92);
+      backdrop-filter: blur(14px);
+      border-bottom: 1px solid var(--border);
+      padding: 0.85rem 1rem;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .logo-mark {
+      font-size: 1.3rem; font-weight: 800;
+      color: var(--orange); letter-spacing: -0.5px;
+    }
+    .greeting {
+      font-size: 0.82rem; font-weight: 600; color: var(--muted);
+    }
+    .greeting span { color: var(--text); }
+    .top-right { display: flex; align-items: center; gap: 0.75rem; }
+    .avatar-top {
+      width: 36px; height: 36px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.9rem; font-weight: 800; color: #fff;
+      border: 2px solid var(--orange);
+      cursor: pointer; transition: transform 0.15s;
+    }
+    .avatar-top:hover { transform: scale(1.06); }
+
+    /* ── Section label ── */
+    .section-label {
+      font-size: 0.66rem; font-weight: 700; letter-spacing: 0.1em;
+      text-transform: uppercase; color: var(--orange);
+      padding: 1.1rem 1rem 0.65rem;
+      display: flex; align-items: center; gap: 0.5rem;
+    }
+    .section-label::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+    /* ── BIG LIBRE BUTTON ── */
+    .libre-section {
+      display: flex; flex-direction: column; align-items: center;
+      padding: 1.75rem 1rem 0.5rem;
+      gap: 0.5rem;
+    }
+    .libre-subtitle {
+      font-size: 0.8rem; color: var(--muted); font-weight: 500;
+      text-align: center; margin-bottom: 0.5rem;
+    }
+
+    .libre-btn-wrap { position: relative; display: flex; align-items: center; justify-content: center; }
+
+    /* Pulse rings behind button */
+    .pulse-ring {
+      position: absolute; border-radius: 50%;
+      border: 2px solid var(--orange);
+      animation: ring-expand 2.2s ease-out infinite;
+      opacity: 0; pointer-events: none;
+    }
+    .pulse-ring:nth-child(1) { width: 160px; height: 160px; animation-delay: 0s; }
+    .pulse-ring:nth-child(2) { width: 185px; height: 185px; animation-delay: 0.5s; }
+    .pulse-ring:nth-child(3) { width: 210px; height: 210px; animation-delay: 1s; }
+    @keyframes ring-expand {
+      0%   { transform: scale(0.85); opacity: 0.6; }
+      100% { transform: scale(1);    opacity: 0; }
+    }
+    .pulse-ring.hidden { display: none; }
+
+    .libre-btn {
+      position: relative; z-index: 1;
+      width: 138px; height: 138px; border-radius: 50%;
+      background: var(--orange);
+      border: none; cursor: pointer;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 0.25rem;
+      box-shadow: 0 0 0 6px rgba(255,107,0,0.15),
+                  0 0 40px rgba(255,107,0,0.45),
+                  0 16px 40px rgba(0,0,0,0.5);
+      transition: transform 0.2s, box-shadow 0.3s, background 0.3s;
+    }
+    .libre-btn:hover {
+      transform: scale(1.04);
+      box-shadow: 0 0 0 8px rgba(255,107,0,0.2),
+                  0 0 60px rgba(255,107,0,0.6),
+                  0 20px 50px rgba(0,0,0,0.5);
+    }
+    .libre-btn:active { transform: scale(0.97); }
+
+    .libre-btn.is-libre {
+      background: #1a3320;
+      box-shadow: 0 0 0 6px rgba(34,197,94,0.15),
+                  0 0 40px rgba(34,197,94,0.35),
+                  0 16px 40px rgba(0,0,0,0.5);
+    }
+    .libre-btn.is-libre:hover {
+      box-shadow: 0 0 0 8px rgba(34,197,94,0.2),
+                  0 0 55px rgba(34,197,94,0.45),
+                  0 20px 50px rgba(0,0,0,0.5);
+    }
+
+    .libre-btn-icon { font-size: 1.9rem; line-height: 1; }
+    .libre-btn-text {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 0.72rem; font-weight: 800;
+      color: #fff; text-align: center; letter-spacing: 0.01em;
+      line-height: 1.2; padding: 0 0.5rem;
+    }
+
+    /* Cancel link */
+    .cancel-libre {
+      font-size: 0.75rem; color: var(--muted); cursor: pointer;
+      background: none; border: none; font-family: 'Space Grotesk', sans-serif;
+      text-decoration: underline; text-underline-offset: 2px;
+      transition: color 0.15s; display: none;
+    }
+    .cancel-libre.show { display: block; }
+    .cancel-libre:hover { color: #ff6b6b; }
+
+    /* Confirmation toast-inline */
+    .libre-msg {
+      font-size: 0.78rem; font-weight: 600; color: var(--green);
+      text-align: center; opacity: 0;
+      transition: opacity 0.4s;
+      min-height: 1.2rem;
+    }
+    .libre-msg.show { opacity: 1; }
+
+    /* ── Feed cards ── */
+    .feed-list { padding: 0 1rem; display: flex; flex-direction: column; gap: 0.6rem; }
+
+    .feed-card {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 14px; padding: 0.9rem 1rem;
+      display: flex; align-items: center; gap: 0.85rem;
+      animation: fadeSlide 0.35s ease;
+      transition: border-color 0.2s;
+    }
+    .feed-card:hover { border-color: rgba(255,107,0,0.2); }
+    @keyframes fadeSlide {
+      from { opacity:0; transform: translateY(8px); }
+      to   { opacity:1; transform: none; }
+    }
+
+    .feed-avatar {
+      position: relative; flex-shrink: 0;
+      width: 46px; height: 46px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.05rem; font-weight: 800; color: #fff;
+    }
+    /* Pulsing green ring */
+    .feed-avatar::before {
+      content: ''; position: absolute; inset: -3px;
+      border-radius: 50%; border: 2px solid var(--green);
+      animation: avatar-pulse 2s ease-in-out infinite;
+    }
+    @keyframes avatar-pulse {
+      0%,100% { opacity: 1; transform: scale(1); }
+      50%      { opacity: 0.4; transform: scale(1.08); }
+    }
+    .feed-dot {
+      position: absolute; bottom: 1px; right: 1px;
+      width: 11px; height: 11px; border-radius: 50%;
+      background: var(--green); border: 2px solid var(--card);
+    }
+
+    .feed-info { flex: 1; min-width: 0; }
+    .feed-name {
+      font-size: 0.9rem; font-weight: 700;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .feed-time { font-size: 0.72rem; color: var(--muted); margin-top: 0.1rem; }
+
+    .compare-mini-btn {
+      flex-shrink: 0;
+      background: var(--card2); border: 1px solid var(--border);
+      border-radius: 8px; padding: 0.4rem 0.7rem;
+      color: var(--text); font-family: 'Space Grotesk', sans-serif;
+      font-size: 0.72rem; font-weight: 600; cursor: pointer;
+      text-decoration: none; display: block;
+      transition: border-color 0.15s, background 0.15s;
+      white-space: nowrap;
+    }
+    .compare-mini-btn:hover { border-color: var(--orange); color: var(--orange); }
+
+    /* Empty feed */
+    .feed-empty {
+      margin: 0 1rem;
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 14px; padding: 1.8rem 1rem;
+      text-align: center; color: var(--muted); font-size: 0.85rem;
+    }
+    .feed-empty-icon { font-size: 1.8rem; margin-bottom: 0.5rem; }
+
+    /* ── Quick access grid ── */
+    .quick-grid {
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 0.7rem; padding: 0 1rem;
+    }
+    .quick-card {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 16px; padding: 1.1rem 1rem;
+      text-decoration: none; color: var(--text);
+      display: flex; flex-direction: column; gap: 0.3rem;
+      transition: border-color 0.2s, background 0.15s, transform 0.15s;
+    }
+    .quick-card:hover {
+      border-color: rgba(255,107,0,0.3);
+      background: var(--card2); transform: translateY(-2px);
+    }
+    .quick-card:active { transform: scale(0.97); }
+    .quick-icon { font-size: 1.5rem; }
+    .quick-title {
+      font-size: 0.88rem; font-weight: 700; margin-top: 0.1rem;
+    }
+    .quick-sub { font-size: 0.7rem; color: var(--muted); }
+
+    /* ── Bottom nav ── */
+    .bottom-nav {
+      position: fixed; bottom: 0; left: 0; right: 0; z-index: 60;
+      background: rgba(13,13,13,0.96);
+      backdrop-filter: blur(16px);
+      border-top: 1px solid var(--border);
+      display: flex; align-items: flex-end; justify-content: space-around;
+      padding: 0.5rem 0.5rem 0.9rem;
+      max-width: var(--max-w); margin: 0 auto;
+    }
+    /* Full-width hack for fixed + max-width */
+    .nav-outer {
+      position: fixed; bottom: 0; left: 0; right: 0; z-index: 60;
+      background: rgba(13,13,13,0.96);
+      backdrop-filter: blur(16px);
+      border-top: 1px solid var(--border);
+    }
+    .nav-inner {
+      max-width: var(--max-w); margin: 0 auto;
+      display: flex; align-items: flex-end; justify-content: space-around;
+      padding: 0.5rem 0.25rem 1rem;
+    }
+    .nav-item {
+      display: flex; flex-direction: column; align-items: center;
+      gap: 0.2rem; text-decoration: none; color: var(--muted);
+      font-size: 0.6rem; font-weight: 600; letter-spacing: 0.04em;
+      text-transform: uppercase; transition: color 0.15s;
+      padding: 0.2rem 0.5rem; cursor: pointer; background: none; border: none;
+      font-family: 'Space Grotesk', sans-serif;
+    }
+    .nav-item:hover { color: var(--text); }
+    .nav-item.active { color: var(--orange); }
+    .nav-icon { font-size: 1.25rem; line-height: 1; }
+
+    /* Central nav button */
+    .nav-center {
+      display: flex; flex-direction: column; align-items: center; gap: 0.2rem;
+      margin-top: -1.4rem; text-decoration: none; cursor: pointer;
+      background: none; border: none; font-family: 'Space Grotesk', sans-serif;
+    }
+    .nav-center-btn {
+      width: 52px; height: 52px; border-radius: 50%;
+      background: var(--orange); border: 3px solid var(--bg);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.3rem; line-height: 1;
+      box-shadow: 0 0 20px rgba(255,107,0,0.5);
+      transition: transform 0.15s, box-shadow 0.2s;
+    }
+    .nav-center-btn:hover {
+      transform: scale(1.08);
+      box-shadow: 0 0 30px rgba(255,107,0,0.7);
+    }
+    .nav-center-label {
+      font-size: 0.58rem; font-weight: 600; letter-spacing: 0.04em;
+      text-transform: uppercase; color: var(--orange);
+    }
+
+    /* ── Auth / loading gates ── */
+    .gate {
+      text-align: center; padding: 4rem 2rem;
+      color: var(--muted); font-size: 0.9rem;
+    }
+    .gate a { color: var(--orange); }
+
+    /* ── Skeleton ── */
+    .skel {
+      height: 68px; border-radius: 14px; margin: 0 1rem 0.6rem;
+      background: linear-gradient(90deg, #1a1a1a 25%, #222 50%, #1a1a1a 75%);
+      background-size: 200% 100%; animation: shimmer 1.4s infinite;
+    }
+    @keyframes shimmer { 0% { background-position:200% 0; } 100% { background-position:-200% 0; } }
+
+    /* ── Global toast ── */
+    .toast {
+      position: fixed; bottom: 5.5rem; left: 50%;
+      transform: translateX(-50%) translateY(16px);
+      background: #1e1e1e; border: 1px solid var(--border);
+      color: var(--text); font-size: 0.82rem; font-weight: 500;
+      padding: 0.55rem 1.1rem; border-radius: 99px;
+      opacity: 0; pointer-events: none;
+      transition: opacity 0.25s, transform 0.25s;
+      z-index: 300; white-space: nowrap;
+    }
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+    .toast.err  { border-color: #ff6b6b; color: #ff6b6b; }
+    .toast.ok   { border-color: var(--green); color: var(--green); }
+  </style>
+</head>
+<body>
+
+<div class="glow-blob" id="glowBlob"></div>
+<div class="toast" id="toast"></div>
+
+<!-- Auth gate -->
+<div id="authGate" class="gate" style="display:none">
+  Debes <a href="../index.html">iniciar sesión</a> para continuar.
+</div>
+
+<!-- Loading -->
+<div id="loadingGate">
+  <div style="height:60px"></div>
+  <div style="height:160px;display:flex;align-items:center;justify-content:center">
+    <div style="width:48px;height:48px;border-radius:50%;border:3px solid rgba(255,107,0,0.2);border-top-color:#FF6B00;animation:spin 0.9s linear infinite"></div>
+  </div>
+  <div class="skel"></div><div class="skel"></div>
+  <style>@keyframes spin{to{transform:rotate(360deg)}}</style>
+</div>
+
+<!-- Main page -->
+<div class="page" id="mainPage" style="display:none">
+
+  <!-- Topbar -->
+  <div class="topbar">
+    <div class="logo-mark">SyncU ⚡</div>
+    <div class="greeting">Hola, <span id="greetingName">…</span></div>
+    <div class="top-right">
+      <div class="avatar-top" id="topAvatar" onclick="window.location.href='perfil.html'"></div>
+    </div>
+  </div>
+
+  <!-- ── LIBRE BUTTON ── -->
+  <div class="libre-section">
+    <p class="libre-subtitle" id="libreSubtitle">Avisa a tus Favoritos que estás libre</p>
+
+    <div class="libre-btn-wrap">
+      <div class="pulse-ring hidden" id="pr1"></div>
+      <div class="pulse-ring hidden" id="pr2"></div>
+      <div class="pulse-ring hidden" id="pr3"></div>
+
+      <button class="libre-btn" id="libreBtn" onclick="toggleLibre()">
+        <span class="libre-btn-icon" id="libreIcon">⚡</span>
+        <span class="libre-btn-text" id="libreBtnText">Libre y<br>Desparchado</span>
+      </button>
+    </div>
+
+    <div class="libre-msg" id="libreMsg"></div>
+    <button class="cancel-libre" id="cancelLibre" onclick="toggleLibre()">Cancelar disponibilidad</button>
+  </div>
+
+  <!-- ── FEED ── -->
+  <div class="section-label">Libres ahora</div>
+  <div id="feedArea">
+    <div class="skel"></div><div class="skel"></div>
+  </div>
+
+  <!-- ── QUICK ACCESS ── -->
+  <div class="section-label">Accesos rápidos</div>
+  <div class="quick-grid">
+    <a class="quick-card" href="mi-horario.html">
+      <div class="quick-icon">📅</div>
+      <div class="quick-title">Mi Horario</div>
+      <div class="quick-sub">Edita tus clases</div>
+    </a>
+    <a class="quick-card" href="comparador.html">
+      <div class="quick-icon">⚡</div>
+      <div class="quick-title">Comparar</div>
+      <div class="quick-sub">Espacios libres</div>
+    </a>
+    <a class="quick-card" href="amigos.html">
+      <div class="quick-icon">👥</div>
+      <div class="quick-title">Amigos</div>
+      <div class="quick-sub">Tu red Uniandina</div>
+    </a>
+    <a class="quick-card" href="perfil.html">
+      <div class="quick-icon">👤</div>
+      <div class="quick-title">Perfil</div>
+      <div class="quick-sub">Tu cuenta</div>
+    </a>
+  </div>
+
+</div>
+
+<!-- ── Bottom nav ── -->
+<div class="nav-outer" id="bottomNav" style="display:none">
+  <div class="nav-inner">
+    <a class="nav-item active" href="home.html">
+      <span class="nav-icon">🏠</span>Inicio
+    </a>
+    <a class="nav-item" href="mi-horario.html">
+      <span class="nav-icon">📅</span>Horario
+    </a>
+    <button class="nav-center" onclick="scrollToLibre()">
+      <div class="nav-center-btn">⚡</div>
+      <span class="nav-center-label">Libre</span>
+    </button>
+    <a class="nav-item" href="amigos.html">
+      <span class="nav-icon">👥</span>Amigos
+    </a>
+    <a class="nav-item" href="perfil.html">
+      <span class="nav-icon">👤</span>Perfil
+    </a>
+  </div>
+</div>
+
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+  import { getAuth, onAuthStateChanged, signOut }
+    from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+  import {
+    getFirestore,
+    doc, getDoc, updateDoc, serverTimestamp,
+    collection, query, where, onSnapshot, Timestamp
+  } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyDkAVe9p_toQ4CAveb7iaI0bvTsJc6gSpE",
+    authDomain: "syncu-3abec.firebaseapp.com",
+    projectId: "syncu-3abec",
+    storageBucket: "syncu-3abec.firebasestorage.app",
+    messagingSenderId: "287232013909",
+    appId: "1:287232013909:web:d05003a489fa0190e806dc"
+  };
+
+  const app  = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db   = getFirestore(app);
+
+  // ── Avatar palette ────────────────────────────────────────
+  const AV_COLORS = ['#FF6B00','#E63946','#2EC4B6','#8338EC','#3A86FF','#06D6A0','#F4A261','#E76F51'];
+  function avatarColor(uid) {
+    let h = 0;
+    for (let c of uid) h = (h * 31 + c.charCodeAt(0)) & 0xffffffff;
+    return AV_COLORS[Math.abs(h) % AV_COLORS.length];
+  }
+  function initial(name) { return (name || '?').charAt(0).toUpperCase(); }
+
+  // ── State ─────────────────────────────────────────────────
+  let myUid    = null;
+  let myDoc    = null;
+  let isLibre  = false;
+  let feedUnsub = null; // Firestore onSnapshot unsubscriber
+
+  // ── Auth ──────────────────────────────────────────────────
+  onAuthStateChanged(auth, async user => {
+    document.getElementById('loadingGate').style.display = 'none';
+    if (!user) {
+      document.getElementById('authGate').style.display = 'block';
+      return;
+    }
+    myUid = user.uid;
+    await loadMyDoc();
+    document.getElementById('mainPage').style.display  = 'block';
+    document.getElementById('bottomNav').style.display = 'block';
+    renderTopbar();
+    applyLibreState(myDoc.disponible || false, false);
+    startFeedListener();
+  });
+
+  async function loadMyDoc() {
+    const snap = await getDoc(doc(db, 'usuarios', myUid));
+    myDoc = snap.exists() ? { uid: myUid, ...snap.data() }
+                          : { uid: myUid, nombre: 'Estudiante', amigos: [], favoritos: [], disponible: false };
+  }
+
+  // ── Topbar ────────────────────────────────────────────────
+  function renderTopbar() {
+    const nombre = myDoc.nombre || 'Estudiante';
+    document.getElementById('greetingName').textContent = nombre.split(' ')[0];
+    const av = document.getElementById('topAvatar');
+    av.style.background = avatarColor(myUid);
+    av.textContent = initial(nombre);
+  }
+
+  // ── Toggle libre ──────────────────────────────────────────
+  window.toggleLibre = async function() {
+    const newState = !isLibre;
+    applyLibreState(newState, true);
+
+    try {
+      await updateDoc(doc(db, 'usuarios', myUid), {
+        disponible:       newState,
+        disponibleDesde:  newState ? serverTimestamp() : null,
+      });
+    } catch(e) {
+      // Rollback
+      applyLibreState(!newState, false);
+      showToast('Error al actualizar estado', 'err');
+    }
+  };
+
+  function applyLibreState(libre, animate) {
+    isLibre = libre;
+    const btn      = document.getElementById('libreBtn');
+    const icon     = document.getElementById('libreIcon');
+    const text     = document.getElementById('libreBtnText');
+    const msg      = document.getElementById('libreMsg');
+    const cancel   = document.getElementById('cancelLibre');
+    const subtitle = document.getElementById('libreSubtitle');
+    const blob     = document.getElementById('glowBlob');
+    const rings    = ['pr1','pr2','pr3'].map(id => document.getElementById(id));
+
+    if (libre) {
+      btn.classList.add('is-libre');
+      icon.textContent = '✅';
+      text.innerHTML   = 'Estás<br>libre';
+      subtitle.textContent = '¡Tus Favoritos saben que estás libre!';
+      msg.textContent  = '¡Tus Favoritos saben que estás libre!';
+      msg.classList.add('show');
+      cancel.classList.add('show');
+      blob.classList.add('active-blob');
+      rings.forEach(r => r.classList.remove('hidden'));
+    } else {
+      btn.classList.remove('is-libre');
+      icon.textContent = '⚡';
+      text.innerHTML   = 'Libre y<br>Desparchado';
+      subtitle.textContent = 'Avisa a tus Favoritos que estás libre';
+      msg.textContent  = '';
+      msg.classList.remove('show');
+      cancel.classList.remove('show');
+      blob.classList.remove('active-blob');
+      rings.forEach(r => r.classList.add('hidden'));
+    }
+
+    if (animate) {
+      btn.style.transform = 'scale(1.07)';
+      setTimeout(() => btn.style.transform = '', 250);
+    }
+  }
+
+  // ── Real-time feed ────────────────────────────────────────
+  function startFeedListener() {
+    const amigos = myDoc.amigos || [];
+    const feedArea = document.getElementById('feedArea');
+
+    if (!amigos.length) {
+      renderEmptyFeed('Aún no tienes amigos. ¡Añádelos en la sección Amigos!');
+      return;
+    }
+
+    // Listen to friends who are disponible
+    // Firestore 'in' limit = 30 (10 in older SDKs); we batch if needed
+    // For simplicity, listen to all amigos docs in real time using onSnapshot per-user
+    // Then filter disponible:true client-side
+
+    // We use a collection-group approach: query 'usuarios' where uid in amigos AND disponible==true
+    // Since Firestore 'in' is limited to 30, we split
+    const batches = [];
+    for (let i = 0; i < amigos.length; i += 10) batches.push(amigos.slice(i, i + 10));
+
+    // We'll collect all snapshots and merge
+    let liveFriends = {}; // uid -> data
+    let unsubList = [];
+
+    batches.forEach(batch => {
+      const q = query(
+        collection(db, 'usuarios'),
+        where('__name__', 'in', batch)
+      );
+      const unsub = onSnapshot(q, snap => {
+        snap.docs.forEach(d => {
+          liveFriends[d.id] = { uid: d.id, ...d.data() };
+        });
+        renderFeed(liveFriends);
+      }, err => console.warn('Feed error', err));
+      unsubList.push(unsub);
+    });
+
+    feedUnsub = () => unsubList.forEach(u => u());
+  }
+
+  function renderFeed(friendsMap) {
+    const feedArea = document.getElementById('feedArea');
+    const libres = Object.values(friendsMap)
+      .filter(f => f.disponible)
+      .sort((a, b) => {
+        // Sort by disponibleDesde descending (most recent first)
+        const ta = a.disponibleDesde?.toMillis?.() || 0;
+        const tb = b.disponibleDesde?.toMillis?.() || 0;
+        return tb - ta;
+      });
+
+    if (!libres.length) {
+      renderEmptyFeed('Todos están en clase ahora mismo 📚');
+      return;
+    }
+
+    feedArea.innerHTML = '';
+    const list = document.createElement('div');
+    list.className = 'feed-list';
+    libres.forEach(f => list.appendChild(buildFeedCard(f)));
+    feedArea.appendChild(list);
+  }
+
+  function renderEmptyFeed(msg) {
+    document.getElementById('feedArea').innerHTML = `
+      <div class="feed-empty">
+        <div class="feed-empty-icon">😴</div>
+        ${msg}
+      </div>`;
+  }
+
+  function buildFeedCard(f) {
+    const card = document.createElement('div');
+    card.className = 'feed-card';
+
+    const color = avatarColor(f.uid);
+    const minutesAgo = f.disponibleDesde
+      ? Math.max(0, Math.floor((Date.now() - f.disponibleDesde.toMillis()) / 60000))
+      : null;
+    const timeText = minutesAgo === null ? 'Libre ahora'
+      : minutesAgo < 1   ? 'Libre desde hace unos segundos'
+      : minutesAgo === 1 ? 'Libre hace 1 minuto'
+      : minutesAgo < 60  ? `Libre hace ${minutesAgo} minutos`
+      : `Libre hace ${Math.floor(minutesAgo / 60)}h`;
+
+    card.innerHTML = `
+      <div class="feed-avatar" style="background:${color}">
+        ${initial(f.nombre)}
+        <div class="feed-dot"></div>
+      </div>
+      <div class="feed-info">
+        <div class="feed-name">${f.nombre}</div>
+        <div class="feed-time">${timeText}</div>
+      </div>
+      <a class="compare-mini-btn" href="comparador.html?uid=${f.uid}">📅 Comparar</a>`;
+    return card;
+  }
+
+  // ── Scroll to libre button ────────────────────────────────
+  window.scrollToLibre = function() {
+    document.querySelector('.libre-section').scrollIntoView({ behavior: 'smooth' });
+  };
+
+  // ── Toast ────────────────────────────────────────────────
+  function showToast(msg, type = '') {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.className = `toast ${type} show`;
+    setTimeout(() => t.classList.remove('show'), 2400);
+  }
+
+  // Cleanup on page hide
+  window.addEventListener('pagehide', () => { if (feedUnsub) feedUnsub(); });
+</script>
+
+<script>
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/syncu/sw.js')
+      .catch(err => console.warn('SW:', err));
+  }
+</script>
+</body>
+</html>
