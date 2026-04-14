@@ -1,0 +1,864 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SyncU — Comparador</title>
+  <link rel="manifest" href="../manifest.json" />
+  <meta name="theme-color" content="#FF6B00" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --orange:  #FF6B00;
+      --bg:      #0D0D0D;
+      --surface: #141414;
+      --card:    #1A1A1A;
+      --card2:   #202020;
+      --text:    #FFFFFF;
+      --muted:   #666;
+      --border:  rgba(255,255,255,0.08);
+      --max-w:   430px;
+    }
+
+    html, body {
+      min-height: 100%; background: var(--bg);
+      color: var(--text); font-family: 'Space Grotesk', sans-serif;
+      overflow-x: hidden;
+    }
+    body::before {
+      content: ''; position: fixed; inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+      pointer-events: none; z-index: 0;
+    }
+
+    /* ── Layout ── */
+    .page {
+      position: relative; z-index: 1;
+      max-width: var(--max-w); margin: 0 auto;
+      padding-bottom: 6rem;
+    }
+
+    /* ── Topbar ── */
+    .topbar {
+      position: sticky; top: 0; z-index: 50;
+      background: rgba(13,13,13,0.93);
+      backdrop-filter: blur(14px);
+      border-bottom: 1px solid var(--border);
+      padding: 1rem 1rem 0.8rem;
+      display: flex; align-items: center; gap: 0.6rem;
+    }
+    .back-btn {
+      background: none; border: none; cursor: pointer;
+      color: var(--muted); font-size: 1.1rem; padding: 0.2rem;
+      transition: color 0.15s;
+    }
+    .back-btn:hover { color: var(--text); }
+    .page-title { font-size: 1.1rem; font-weight: 700; letter-spacing: -0.3px; }
+
+    /* ── Section label ── */
+    .section-label {
+      font-size: 0.66rem; font-weight: 700; letter-spacing: 0.1em;
+      text-transform: uppercase; color: var(--orange);
+      padding: 1.1rem 1rem 0.6rem;
+      display: flex; align-items: center; gap: 0.5rem;
+    }
+    .section-label::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+    /* ── Selector panel ── */
+    .selector-panel { padding: 0 1rem; }
+
+    /* Mode tabs */
+    .mode-tabs {
+      display: grid; grid-template-columns: 1fr 1fr;
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 12px; padding: 3px; gap: 3px;
+      margin-bottom: 1rem;
+    }
+    .mode-tab {
+      padding: 0.6rem; border: none; border-radius: 9px;
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 0.82rem; font-weight: 600; cursor: pointer;
+      background: none; color: var(--muted);
+      transition: background 0.2s, color 0.2s;
+    }
+    .mode-tab.active {
+      background: var(--card2); color: var(--text);
+    }
+
+    /* Dropdown wrapper */
+    .select-wrap { position: relative; margin-bottom: 1rem; }
+    .select-wrap::after {
+      content: '▾'; position: absolute; right: 1rem; top: 50%;
+      transform: translateY(-50%); color: var(--muted);
+      pointer-events: none; font-size: 0.85rem;
+    }
+    select {
+      width: 100%; appearance: none;
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 12px; padding: 0.8rem 2.5rem 0.8rem 1rem;
+      color: var(--text); font-family: 'Space Grotesk', sans-serif;
+      font-size: 0.9rem; outline: none; cursor: pointer;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    select:focus {
+      border-color: var(--orange);
+      box-shadow: 0 0 0 3px rgba(255,107,0,0.15);
+    }
+    select option { background: #1a1a1a; }
+    select:disabled { opacity: .4; cursor: not-allowed; }
+
+    /* Selected chips */
+    .chips-wrap {
+      display: flex; flex-wrap: wrap; gap: 0.45rem;
+      margin-bottom: 0.75rem; min-height: 0;
+    }
+    .chip {
+      display: flex; align-items: center; gap: 0.35rem;
+      background: rgba(255,107,0,0.12);
+      border: 1px solid rgba(255,107,0,0.3);
+      border-radius: 99px; padding: 0.3rem 0.75rem;
+      font-size: 0.75rem; font-weight: 600; color: var(--orange);
+      animation: popIn 0.2s cubic-bezier(0.34,1.56,0.64,1);
+    }
+    @keyframes popIn {
+      from { transform: scale(0.7); opacity: 0; }
+      to   { transform: scale(1);   opacity: 1; }
+    }
+    .chip-remove {
+      cursor: pointer; color: rgba(255,107,0,0.6);
+      font-size: 0.8rem; line-height: 1;
+      transition: color 0.15s;
+    }
+    .chip-remove:hover { color: var(--orange); }
+
+    /* CTA button */
+    .cta-btn {
+      width: 100%; padding: 0.95rem;
+      background: var(--orange); color: #fff; border: none;
+      border-radius: 12px; font-family: 'Space Grotesk', sans-serif;
+      font-size: 1rem; font-weight: 800; letter-spacing: 0.04em;
+      cursor: pointer; position: relative; overflow: hidden;
+      transition: background 0.2s, box-shadow 0.2s, transform 0.15s;
+      display: flex; align-items: center; justify-content: center; gap: 0.5rem;
+    }
+    .cta-btn::after {
+      content: ''; position: absolute; inset: 0;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.12), transparent);
+      transform: translateX(-100%); transition: transform 0.5s;
+    }
+    .cta-btn:hover::after { transform: translateX(100%); }
+    .cta-btn:hover {
+      background: #ff7b1a;
+      box-shadow: 0 0 28px rgba(255,107,0,0.5);
+      transform: translateY(-1px);
+    }
+    .cta-btn:active { transform: scale(0.98); }
+    .cta-btn:disabled { opacity: .45; cursor: not-allowed; transform: none; box-shadow: none; }
+
+    /* ── Calculating state ── */
+    .calculating {
+      display: none; flex-direction: column; align-items: center;
+      padding: 3rem 1rem; gap: 1rem;
+    }
+    .calculating.show { display: flex; }
+    .calc-ring {
+      width: 52px; height: 52px; border-radius: 50%;
+      border: 3px solid rgba(255,107,0,0.2);
+      border-top-color: var(--orange);
+      animation: spin 0.9s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .calc-text {
+      font-size: 0.88rem; font-weight: 600; color: var(--muted);
+      animation: pulse 1.2s ease-in-out infinite;
+    }
+    @keyframes pulse { 0%,100% { opacity:.5; } 50% { opacity:1; } }
+    .calc-step {
+      font-size: 0.72rem; color: #3a3a3a;
+    }
+
+    /* ── Results panel ── */
+    .results-panel { display: none; }
+    .results-panel.show { display: block; }
+
+    /* Summary banner */
+    .summary-banner {
+      margin: 0 1rem 0.5rem;
+      background: linear-gradient(135deg, rgba(255,107,0,0.15), rgba(255,107,0,0.05));
+      border: 1px solid rgba(255,107,0,0.25);
+      border-radius: 14px; padding: 1rem 1.1rem;
+      display: flex; align-items: center; gap: 0.85rem;
+      animation: fadeSlide 0.4s ease;
+    }
+    @keyframes fadeSlide {
+      from { opacity:0; transform: translateY(10px); }
+      to   { opacity:1; transform: none; }
+    }
+    .summary-icon { font-size: 1.8rem; line-height: 1; }
+    .summary-count {
+      font-size: 1.5rem; font-weight: 800; color: var(--orange);
+      line-height: 1;
+    }
+    .summary-sub { font-size: 0.75rem; color: var(--muted); margin-top: 0.15rem; }
+
+    /* No overlap banner */
+    .no-overlap {
+      margin: 0 1rem 0.5rem;
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 14px; padding: 1.5rem 1.1rem;
+      text-align: center; color: var(--muted);
+      font-size: 0.88rem; animation: fadeSlide 0.4s ease;
+    }
+    .no-overlap-icon { font-size: 2rem; margin-bottom: 0.5rem; }
+
+    /* Best moment today */
+    .best-today {
+      margin: 0 1rem 0.5rem;
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 14px; padding: 0.9rem 1.1rem;
+      display: flex; align-items: center; gap: 0.85rem;
+      animation: fadeSlide 0.5s ease;
+    }
+    .best-today-icon { font-size: 1.4rem; }
+    .best-today-label {
+      font-size: 0.68rem; font-weight: 700; letter-spacing: 0.08em;
+      text-transform: uppercase; color: var(--muted); margin-bottom: 0.2rem;
+    }
+    .best-today-time { font-size: 1rem; font-weight: 700; color: var(--text); }
+    .best-today-sub  { font-size: 0.72rem; color: var(--muted); }
+    .no-today {
+      font-size: 0.82rem; color: var(--muted);
+      margin: 0 1rem 0.5rem;
+      padding: 0.7rem 1rem; background: var(--card);
+      border: 1px solid var(--border); border-radius: 14px;
+      text-align: center; animation: fadeSlide 0.5s ease;
+    }
+
+    /* Participants row */
+    .participants {
+      display: flex; align-items: center; gap: 0.5rem;
+      margin: 0 1rem 0.75rem; flex-wrap: wrap;
+    }
+    .p-chip {
+      display: flex; align-items: center; gap: 0.35rem;
+      background: var(--card2); border: 1px solid var(--border);
+      border-radius: 99px; padding: 0.25rem 0.65rem;
+      font-size: 0.72rem; font-weight: 600; color: var(--muted);
+    }
+    .p-dot { width: 8px; height: 8px; border-radius: 50%; }
+
+    /* ── Grid ── */
+    .grid-wrap {
+      overflow-x: auto; padding: 0 1rem 1rem;
+      scrollbar-width: thin; scrollbar-color: #2a2a2a transparent;
+    }
+    .schedule-grid {
+      display: grid;
+      grid-template-columns: 40px repeat(5, 1fr);
+      min-width: 300px;
+      border: 1px solid var(--border);
+      border-radius: 14px; overflow: hidden;
+    }
+
+    /* Header */
+    .col-header {
+      background: var(--card); padding: 0.45rem 0;
+      text-align: center; font-size: 0.62rem; font-weight: 700;
+      letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted);
+      border-bottom: 1px solid var(--border);
+    }
+    .col-header.today { color: var(--orange); }
+
+    /* Time label */
+    .time-label {
+      background: var(--card); font-size: 0.58rem; color: var(--muted);
+      display: flex; align-items: flex-start; justify-content: flex-end;
+      padding: 3px 5px 0 0;
+      border-bottom: 1px solid var(--border);
+      border-right: 1px solid var(--border);
+    }
+
+    /* Cell base */
+    .cell {
+      height: 44px; border-bottom: 1px solid var(--border);
+      border-right: 1px solid var(--border);
+      position: relative; cursor: default;
+      background: #111;
+      transition: filter 0.15s;
+    }
+    .cell:last-child { border-right: none; }
+
+    /* Free cell */
+    .cell.free {
+      background: rgba(255,107,0,0.18);
+      cursor: pointer;
+    }
+    .cell.free::after {
+      content: '';
+      position: absolute; inset: 2px;
+      border-radius: 5px;
+      background: var(--orange);
+      opacity: 0.55;
+      transition: opacity 0.15s;
+    }
+    .cell.free:hover::after { opacity: 0.8; }
+
+    /* Pulse on free cells */
+    .cell.free.best-slot::after {
+      background: var(--orange);
+      opacity: 0.85;
+      box-shadow: 0 0 10px rgba(255,107,0,0.6);
+      animation: glow 1.8s ease-in-out infinite;
+    }
+    @keyframes glow {
+      0%,100% { opacity:.85; box-shadow: 0 0 10px rgba(255,107,0,0.6); }
+      50%      { opacity:1;   box-shadow: 0 0 20px rgba(255,107,0,0.9); }
+    }
+
+    /* Tooltip */
+    .tooltip {
+      position: fixed; z-index: 200;
+      background: #fff; color: #000;
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 0.72rem; font-weight: 700;
+      padding: 0.35rem 0.75rem; border-radius: 8px;
+      pointer-events: none; white-space: nowrap;
+      transform: translateX(-50%);
+      box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+      opacity: 0; transition: opacity 0.15s;
+    }
+    .tooltip.visible { opacity: 1; }
+    .tooltip::after {
+      content: ''; position: absolute; bottom: -5px; left: 50%;
+      transform: translateX(-50%);
+      border: 5px solid transparent; border-top: 5px solid #fff;
+      border-bottom: none;
+    }
+
+    /* ── Auth / loading gates ── */
+    .gate {
+      text-align: center; padding: 4rem 2rem;
+      color: var(--muted); font-size: 0.9rem;
+    }
+    .gate a { color: var(--orange); }
+
+    /* ── Skeleton ── */
+    .skel {
+      height: 56px; border-radius: 12px; margin: 0 1rem 0.6rem;
+      background: linear-gradient(90deg, #1a1a1a 25%, #222 50%, #1a1a1a 75%);
+      background-size: 200% 100%; animation: shimmer 1.4s infinite;
+    }
+    @keyframes shimmer { 0% { background-position:200% 0; } 100% { background-position:-200% 0; } }
+
+    /* ── Empty multiselect hint ── */
+    .hint {
+      font-size: 0.75rem; color: var(--muted); margin-bottom: 0.75rem;
+      padding: 0.6rem 0.9rem; background: var(--card);
+      border: 1px solid var(--border); border-radius: 10px;
+    }
+
+    /* ── Toast ── */
+    .toast {
+      position: fixed; bottom: 5rem; left: 50%;
+      transform: translateX(-50%) translateY(20px);
+      background: #1e1e1e; border: 1px solid var(--border);
+      color: var(--text); font-size: 0.82rem; font-weight: 500;
+      padding: 0.55rem 1.1rem; border-radius: 99px;
+      opacity: 0; pointer-events: none;
+      transition: opacity 0.25s, transform 0.25s;
+      z-index: 300; white-space: nowrap;
+    }
+    .toast.show { opacity:1; transform: translateX(-50%) translateY(0); }
+    .toast.err  { border-color: #ff6b6b; color: #ff6b6b; }
+  </style>
+</head>
+<body>
+
+<div class="tooltip" id="tooltip"></div>
+<div class="toast"   id="toast"></div>
+
+<!-- Auth gate -->
+<div id="authGate"    class="gate"  style="display:none">
+  Debes <a href="../index.html">iniciar sesión</a> para comparar horarios.
+</div>
+
+<!-- Loading -->
+<div id="loadingGate">
+  <div style="height:60px"></div>
+  <div class="skel"></div><div class="skel"></div>
+</div>
+
+<!-- Main page -->
+<div class="page" id="mainPage" style="display:none">
+
+  <!-- Topbar -->
+  <div class="topbar">
+    <button class="back-btn" onclick="history.back()">←</button>
+    <span class="page-title">⚡ Comparador</span>
+  </div>
+
+  <!-- ── Selector ── -->
+  <div class="section-label">¿Con quién comparas?</div>
+  <div class="selector-panel">
+
+    <!-- Mode tabs -->
+    <div class="mode-tabs">
+      <button class="mode-tab active" id="tabAmigo" onclick="setMode('amigo')">👤 Un amigo</button>
+      <button class="mode-tab"        id="tabGrupo" onclick="setMode('grupo')">👥 Un grupo</button>
+    </div>
+
+    <!-- Amigo mode -->
+    <div id="modeAmigo">
+      <div class="select-wrap">
+        <select id="amigoSelect">
+          <option value="">Selecciona un amigo…</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Grupo mode -->
+    <div id="modeGrupo" style="display:none">
+      <div class="select-wrap">
+        <select id="grupoSelect">
+          <option value="">Selecciona un grupo…</option>
+        </select>
+      </div>
+    </div>
+
+    <button class="cta-btn" id="compareBtn" onclick="runComparison()">
+      Comparar ahora ⚡
+    </button>
+  </div>
+
+  <!-- ── Calculating ── -->
+  <div class="calculating" id="calculating">
+    <div class="calc-ring"></div>
+    <div class="calc-text">Analizando horarios…</div>
+    <div class="calc-step" id="calcStep">Leyendo datos</div>
+  </div>
+
+  <!-- ── Results ── -->
+  <div class="results-panel" id="resultsPanel">
+
+    <div class="section-label">Resultado</div>
+
+    <!-- Participants -->
+    <div class="participants" id="participantsRow"></div>
+
+    <!-- Summary -->
+    <div id="summaryArea"></div>
+
+    <!-- Best today -->
+    <div id="bestTodayArea"></div>
+
+    <!-- Grid label -->
+    <div class="section-label" id="gridLabel" style="display:none">Vista semanal</div>
+
+    <!-- Grid -->
+    <div class="grid-wrap" id="gridWrap" style="display:none">
+      <div class="schedule-grid" id="scheduleGrid"></div>
+    </div>
+
+  </div>
+
+</div>
+
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+  import { getAuth, onAuthStateChanged }
+    from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+  import {
+    getFirestore, doc, getDoc, collection, query, where, getDocs
+  } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyDkAVe9p_toQ4CAveb7iaI0bvTsJc6gSpE",
+    authDomain: "syncu-3abec.firebaseapp.com",
+    projectId: "syncu-3abec",
+    storageBucket: "syncu-3abec.firebasestorage.app",
+    messagingSenderId: "287232013909",
+    appId: "1:287232013909:web:d05003a489fa0190e806dc"
+  };
+
+  const app  = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db   = getFirestore(app);
+
+  // ── Constants ───────────────────────────────────────────
+  const DIAS   = ['lunes','martes','miércoles','jueves','viernes'];
+  const DIAS_S = ['Lun','Mar','Mié','Jue','Vie'];
+  const HOURS  = [];
+  for (let h = 6; h <= 19; h++) HOURS.push(`${h}:00`);
+
+  const TODAY_IDX = (() => {
+    const d = new Date().getDay();
+    return d >= 1 && d <= 5 ? d - 1 : -1;
+  })();
+  const TODAY_DIA = TODAY_IDX >= 0 ? DIAS[TODAY_IDX] : null;
+
+  const AV_COLORS = ['#FF6B00','#E63946','#2EC4B6','#8338EC','#3A86FF','#06D6A0','#F4A261','#E76F51'];
+  function avatarColor(uid) {
+    let h = 0;
+    for (let c of uid) h = (h * 31 + c.charCodeAt(0)) & 0xffffffff;
+    return AV_COLORS[Math.abs(h) % AV_COLORS.length];
+  }
+
+  // ── State ───────────────────────────────────────────────
+  let myUid    = null;
+  let myDoc    = null;
+  let mode     = 'amigo';  // 'amigo' | 'grupo'
+  let friendDocs = [];     // [{uid, nombre, ...}]
+  let grupoDocs  = [];     // [{id, nombre, miembros:[]}]
+
+  // ── Auth ────────────────────────────────────────────────
+  onAuthStateChanged(auth, async user => {
+    document.getElementById('loadingGate').style.display = 'none';
+    if (!user) { document.getElementById('authGate').style.display = 'block'; return; }
+    myUid = user.uid;
+    await loadMyData();
+    document.getElementById('mainPage').style.display = 'block';
+  });
+
+  async function loadMyData() {
+    const snap = await getDoc(doc(db, 'usuarios', myUid));
+    myDoc = snap.exists() ? { uid: myUid, ...snap.data() } : { uid: myUid, amigos: [], favoritos: [] };
+
+    // Load friends
+    const amigos = myDoc.amigos || [];
+    friendDocs = [];
+    for (let i = 0; i < amigos.length; i += 10) {
+      const batch = amigos.slice(i, i + 10);
+      const q = query(collection(db, 'usuarios'), where('__name__', 'in', batch));
+      const snaps = await getDocs(q);
+      snaps.forEach(s => friendDocs.push({ uid: s.id, ...s.data() }));
+    }
+
+    // Load my groups
+    const gq = query(collection(db, 'grupos'), where('miembros', 'array-contains', myUid));
+    const gsnaps = await getDocs(gq);
+    grupoDocs = gsnaps.docs.map(s => ({ id: s.id, ...s.data() }));
+
+    populateDropdowns();
+  }
+
+  function populateDropdowns() {
+    // Amigos
+    const asel = document.getElementById('amigoSelect');
+    asel.innerHTML = '<option value="">Selecciona un amigo…</option>';
+    friendDocs.forEach(f => {
+      const opt = document.createElement('option');
+      opt.value = f.uid;
+      opt.textContent = f.nombre + (f.carrera ? ` · ${f.carrera.split(' ')[0]}` : '');
+      asel.appendChild(opt);
+    });
+    if (!friendDocs.length) {
+      const opt = document.createElement('option');
+      opt.disabled = true;
+      opt.textContent = 'No tienes amigos aún — añade en Amigos';
+      asel.appendChild(opt);
+    }
+
+    // Grupos
+    const gsel = document.getElementById('grupoSelect');
+    gsel.innerHTML = '<option value="">Selecciona un grupo…</option>';
+    grupoDocs.forEach(g => {
+      const opt = document.createElement('option');
+      opt.value = g.id;
+      opt.textContent = `${g.nombre} (${g.miembros.length} personas)`;
+      gsel.appendChild(opt);
+    });
+    if (!grupoDocs.length) {
+      const opt = document.createElement('option');
+      opt.disabled = true;
+      opt.textContent = 'No tienes grupos aún — crea en Amigos';
+      gsel.appendChild(opt);
+    }
+  }
+
+  // ── Mode toggle ─────────────────────────────────────────
+  window.setMode = function(m) {
+    mode = m;
+    document.getElementById('tabAmigo').classList.toggle('active', m === 'amigo');
+    document.getElementById('tabGrupo').classList.toggle('active', m === 'grupo');
+    document.getElementById('modeAmigo').style.display = m === 'amigo' ? 'block' : 'none';
+    document.getElementById('modeGrupo').style.display = m === 'grupo' ? 'block' : 'none';
+    hideResults();
+  };
+
+  function hideResults() {
+    document.getElementById('resultsPanel').classList.remove('show');
+    document.getElementById('calculating').classList.remove('show');
+  }
+
+  // ── Run comparison ───────────────────────────────────────
+  window.runComparison = async function() {
+    // Determine participants
+    let participants = []; // [{uid, nombre}]
+
+    if (mode === 'amigo') {
+      const uid = document.getElementById('amigoSelect').value;
+      if (!uid) { showToast('Selecciona un amigo primero', 'err'); return; }
+      const f = friendDocs.find(x => x.uid === uid);
+      participants = [
+        { uid: myUid, nombre: 'Yo' },
+        { uid, nombre: f?.nombre || uid }
+      ];
+    } else {
+      const gid = document.getElementById('grupoSelect').value;
+      if (!gid) { showToast('Selecciona un grupo primero', 'err'); return; }
+      const grupo = grupoDocs.find(g => g.id === gid);
+      participants = grupo.miembros.map(uid => {
+        if (uid === myUid) return { uid, nombre: 'Yo' };
+        const f = friendDocs.find(x => x.uid === uid);
+        return { uid, nombre: f?.nombre || uid };
+      });
+    }
+
+    // Show calculating
+    hideResults();
+    document.getElementById('compareBtn').disabled = true;
+    document.getElementById('calculating').classList.add('show');
+    setCalcStep('Leyendo horarios…');
+
+    try {
+      // Fetch all schedules
+      const schedules = {};
+      for (const p of participants) {
+        setCalcStep(`Obteniendo horario de ${p.nombre}…`);
+        const snap = await getDoc(doc(db, 'horarios', p.uid));
+        schedules[p.uid] = snap.exists() ? snap.data() : { bloques: [], diasLibresHoy: [] };
+      }
+
+      setCalcStep('Calculando intersección…');
+      await delay(400); // brief pause so user sees the step
+
+      const freeMap = computeIntersection(schedules, participants.map(p => p.uid));
+
+      document.getElementById('calculating').classList.remove('show');
+      renderResults(freeMap, participants);
+
+    } catch(e) {
+      document.getElementById('calculating').classList.remove('show');
+      showToast('Error al comparar horarios', 'err');
+      console.error(e);
+    } finally {
+      document.getElementById('compareBtn').disabled = false;
+    }
+  };
+
+  function setCalcStep(msg) {
+    document.getElementById('calcStep').textContent = msg;
+  }
+
+  // ── Intersection engine ──────────────────────────────────
+  // Returns a Set of `dia|hora` strings where ALL users are free
+  function computeIntersection(schedules, uids) {
+    // For each uid, build a Set of OCCUPIED slots
+    // A slot is occupied if it appears in bloques AND is NOT marked libre
+    // (libre=true means user toggled "hoy no tengo clase", so they ARE free)
+    const occupiedPerUser = {};
+
+    uids.forEach(uid => {
+      const data = schedules[uid];
+      const diasLibresHoy = new Set(data.diasLibresHoy || []);
+      const occupied = new Set();
+
+      (data.bloques || []).forEach(b => {
+        // If the dia is marked as libre hoy, slot is free despite being in bloques
+        if (diasLibresHoy.has(b.dia)) return;
+        // If slot itself is marked libre, it's free
+        if (b.libre) return;
+        occupied.add(`${b.dia}|${b.hora}`);
+      });
+
+      occupiedPerUser[uid] = occupied;
+    });
+
+    // A slot is FREE for everyone if no user has it occupied
+    const allSlots = new Set();
+    DIAS.forEach(dia => HOURS.forEach(hora => allSlots.add(`${dia}|${hora}`)));
+
+    const freeForAll = new Set();
+    allSlots.forEach(slot => {
+      const allFree = uids.every(uid => !occupiedPerUser[uid].has(slot));
+      if (allFree) freeForAll.add(slot);
+    });
+
+    return freeForAll;
+  }
+
+  // ── Render results ───────────────────────────────────────
+  function renderResults(freeMap, participants) {
+    const panel = document.getElementById('resultsPanel');
+
+    // Participants row
+    const pRow = document.getElementById('participantsRow');
+    pRow.innerHTML = '';
+    participants.forEach(p => {
+      const chip = document.createElement('div');
+      chip.className = 'p-chip';
+      const color = p.uid === myUid ? '#FF6B00' : avatarColor(p.uid);
+      chip.innerHTML = `<div class="p-dot" style="background:${color}"></div>${p.nombre}`;
+      pRow.appendChild(chip);
+    });
+
+    // Summary
+    const count = freeMap.size;
+    const summary = document.getElementById('summaryArea');
+    if (count === 0) {
+      summary.innerHTML = `
+        <div class="no-overlap">
+          <div class="no-overlap-icon">😬</div>
+          No encontramos espacios libres en común esta semana.
+          <br><br>
+          <span style="font-size:.72rem">Intenta con menos personas o revisa si los horarios están guardados.</span>
+        </div>`;
+    } else {
+      const nombres = participants.filter(p => p.uid !== myUid).map(p => p.nombre.split(' ')[0]);
+      const conQuien = nombres.length === 1 ? `con ${nombres[0]}` : `con el grupo`;
+      summary.innerHTML = `
+        <div class="summary-banner">
+          <div class="summary-icon">🎉</div>
+          <div>
+            <div class="summary-count">${count} espacios libres</div>
+            <div class="summary-sub">Tienes ${count} bloques libres ${conQuien} esta semana</div>
+          </div>
+        </div>`;
+    }
+
+    // Best moment today
+    const bestArea = document.getElementById('bestTodayArea');
+    if (!TODAY_DIA) {
+      bestArea.innerHTML = `<div class="no-today">📅 Hoy es fin de semana — no hay clases</div>`;
+    } else {
+      const todayFree = HOURS
+        .filter(hora => freeMap.has(`${TODAY_DIA}|${hora}`))
+        .sort();
+
+      // Find the next one from now
+      const nowH = new Date().getHours();
+      const next = todayFree.find(h => parseInt(h) >= nowH) || todayFree[0];
+
+      if (!next) {
+        bestArea.innerHTML = `<div class="no-today">😅 Hoy no hay espacios libres en común</div>`;
+      } else {
+        const nextH = parseInt(next);
+        const upcoming = nextH >= nowH;
+        const label = upcoming ? 'Próximo espacio libre hoy' : 'Espacio libre hoy';
+        const end = `${nextH + 1}:00`;
+        bestArea.innerHTML = `
+          <div class="best-today">
+            <div class="best-today-icon">⏰</div>
+            <div>
+              <div class="best-today-label">${label}</div>
+              <div class="best-today-time">${next} – ${end}</div>
+              <div class="best-today-sub">${DIAS_S[TODAY_IDX]} · ${upcoming ? 'En aprox. ' + Math.max(0, nextH - nowH) + 'h' : 'Pasado'}</div>
+            </div>
+          </div>`;
+      }
+    }
+
+    // Show grid
+    if (count > 0) {
+      document.getElementById('gridLabel').style.display = '';
+      document.getElementById('gridWrap').style.display  = '';
+      buildGrid(freeMap);
+    } else {
+      document.getElementById('gridLabel').style.display = 'none';
+      document.getElementById('gridWrap').style.display  = 'none';
+    }
+
+    panel.classList.add('show');
+    panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  // ── Build result grid ────────────────────────────────────
+  function buildGrid(freeMap) {
+    const grid = document.getElementById('scheduleGrid');
+    grid.innerHTML = '';
+
+    // Determine best slot (most future today, or first of week)
+    const nowH = new Date().getHours();
+    let bestSlot = null;
+    if (TODAY_DIA) {
+      bestSlot = HOURS
+        .filter(h => freeMap.has(`${TODAY_DIA}|${h}`) && parseInt(h) >= nowH)
+        .map(h => `${TODAY_DIA}|${h}`)[0] || null;
+    }
+
+    // Header
+    const emptyHead = document.createElement('div');
+    emptyHead.className = 'col-header';
+    grid.appendChild(emptyHead);
+    DIAS.forEach((dia, i) => {
+      const h = document.createElement('div');
+      h.className = `col-header ${i === TODAY_IDX ? 'today' : ''}`;
+      h.textContent = DIAS_S[i];
+      grid.appendChild(h);
+    });
+
+    // Rows
+    HOURS.forEach(hora => {
+      const lbl = document.createElement('div');
+      lbl.className = 'time-label';
+      lbl.textContent = hora;
+      grid.appendChild(lbl);
+
+      DIAS.forEach(dia => {
+        const slot = `${dia}|${hora}`;
+        const cell = document.createElement('div');
+        const isFree = freeMap.has(slot);
+        cell.className = `cell${isFree ? ' free' : ''}`;
+        if (isFree && slot === bestSlot) cell.classList.add('best-slot');
+
+        if (isFree) {
+          cell.addEventListener('click', e => showTooltip(e, '¡Todos libres aquí!'));
+          cell.addEventListener('mouseleave', hideTooltip);
+          cell.addEventListener('touchend',   hideTooltip);
+        }
+        grid.appendChild(cell);
+      });
+    });
+  }
+
+  // ── Tooltip ──────────────────────────────────────────────
+  const tooltipEl = document.getElementById('tooltip');
+  let tooltipTimer;
+
+  function showTooltip(e, msg) {
+    const rect = e.currentTarget.getBoundingClientRect();
+    tooltipEl.textContent = msg;
+    tooltipEl.style.left = `${rect.left + rect.width / 2}px`;
+    tooltipEl.style.top  = `${rect.top - 38}px`;
+    tooltipEl.classList.add('visible');
+    clearTimeout(tooltipTimer);
+    tooltipTimer = setTimeout(hideTooltip, 1800);
+  }
+  function hideTooltip() {
+    tooltipEl.classList.remove('visible');
+  }
+
+  // ── Helpers ──────────────────────────────────────────────
+  function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+  function showToast(msg, type = '') {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.className = `toast ${type} show`;
+    setTimeout(() => t.classList.remove('show'), 2400);
+  }
+</script>
+
+<script>
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/syncu/sw.js')
+      .catch(err => console.warn('SW:', err));
+  }
+</script>
+</body>
+</html>
