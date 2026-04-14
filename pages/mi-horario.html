@@ -1,0 +1,831 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SyncU — Mi Horario</title>
+  <link rel="manifest" href="../manifest.json" />
+  <meta name="theme-color" content="#FF6B00" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --orange:   #FF6B00;
+      --bg:       #0D0D0D;
+      --surface:  #141414;
+      --surface2: #1A1A1A;
+      --text:     #FFFFFF;
+      --muted:    #666;
+      --border:   rgba(255,255,255,0.10);
+      --max-w:    430px;
+    }
+
+    html, body {
+      min-height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Space Grotesk', sans-serif;
+      overflow-x: hidden;
+    }
+
+    /* ── Grain ── */
+    body::before {
+      content: '';
+      position: fixed; inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E");
+      pointer-events: none; z-index: 0;
+    }
+
+    /* ── Page shell ── */
+    .page {
+      position: relative; z-index: 1;
+      max-width: var(--max-w);
+      margin: 0 auto;
+      padding: 0 0 6rem;
+    }
+
+    /* ── Top bar ── */
+    .topbar {
+      position: sticky; top: 0; z-index: 50;
+      background: rgba(13,13,13,0.92);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      padding: 1rem 1rem 0.75rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .topbar-left { display: flex; align-items: center; gap: 0.6rem; }
+    .back-btn {
+      background: none; border: none; cursor: pointer;
+      color: var(--muted); font-size: 1.1rem; padding: 0.2rem;
+      transition: color 0.15s;
+    }
+    .back-btn:hover { color: var(--text); }
+    .page-title {
+      font-size: 1.1rem; font-weight: 700; letter-spacing: -0.3px;
+    }
+    .save-btn {
+      background: var(--orange);
+      color: #fff;
+      border: none; border-radius: 8px;
+      padding: 0.45rem 1rem;
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 0.82rem; font-weight: 700;
+      letter-spacing: 0.03em;
+      cursor: pointer;
+      transition: background 0.2s, box-shadow 0.2s, transform 0.15s;
+      display: flex; align-items: center; gap: 0.4rem;
+    }
+    .save-btn:hover {
+      background: #ff7b1a;
+      box-shadow: 0 0 18px rgba(255,107,0,0.45);
+      transform: translateY(-1px);
+    }
+    .save-btn:active { transform: scale(0.97); }
+    .save-btn:disabled { opacity: .45; cursor: not-allowed; transform: none; }
+
+    /* ── Toast ── */
+    .toast {
+      position: fixed; bottom: 5rem; left: 50%;
+      transform: translateX(-50%) translateY(20px);
+      background: #1e1e1e; border: 1px solid var(--border);
+      color: var(--text); font-size: 0.82rem; font-weight: 500;
+      padding: 0.6rem 1.2rem; border-radius: 99px;
+      opacity: 0; pointer-events: none;
+      transition: opacity 0.25s, transform 0.25s;
+      z-index: 200; white-space: nowrap;
+    }
+    .toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+    .toast.ok  { border-color: #00dc82; color: #00dc82; }
+    .toast.err { border-color: #ff6b6b; color: #ff6b6b; }
+
+    /* ── Auth gate ── */
+    .auth-gate {
+      text-align: center; padding: 4rem 2rem;
+      color: var(--muted); font-size: 0.9rem;
+    }
+    .auth-gate a { color: var(--orange); }
+
+    /* ── Day toggle bar ── */
+    .day-toggles {
+      padding: 0.75rem 1rem;
+      border-bottom: 1px solid var(--border);
+      display: flex; gap: 0.5rem;
+      overflow-x: auto;
+      scrollbar-width: none;
+    }
+    .day-toggles::-webkit-scrollbar { display: none; }
+    .day-tag {
+      flex-shrink: 0;
+      display: flex; align-items: center; gap: 0.35rem;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 99px;
+      padding: 0.3rem 0.75rem;
+      font-size: 0.72rem; font-weight: 600;
+      cursor: pointer;
+      transition: border-color 0.2s, background 0.2s;
+      user-select: none;
+    }
+    .day-tag.libre {
+      border-color: var(--orange);
+      background: rgba(255,107,0,0.08);
+      color: var(--orange);
+    }
+    .day-tag .dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: var(--muted);
+      transition: background 0.2s;
+    }
+    .day-tag.libre .dot { background: var(--orange); }
+
+    /* ── Grid wrapper ── */
+    .grid-wrap {
+      overflow-x: auto;
+      padding: 0 0 1rem;
+      scrollbar-width: thin;
+      scrollbar-color: #2a2a2a transparent;
+    }
+
+    /* ── Schedule grid ── */
+    .schedule-grid {
+      display: grid;
+      grid-template-columns: 44px repeat(5, 1fr);
+      min-width: 340px;
+    }
+
+    /* Header row */
+    .col-header {
+      position: sticky; top: 0;
+      background: var(--bg);
+      z-index: 10;
+      text-align: center;
+      font-size: 0.68rem; font-weight: 700;
+      letter-spacing: 0.08em; text-transform: uppercase;
+      color: var(--muted);
+      padding: 0.6rem 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .col-header:first-child { /* time column */ }
+    .col-header.today { color: var(--orange); }
+
+    /* Time label */
+    .time-label {
+      font-size: 0.62rem; font-weight: 500;
+      color: var(--muted);
+      text-align: right;
+      padding: 0 6px 0 0;
+      display: flex; align-items: flex-start;
+      padding-top: 3px;
+      border-right: 1px solid var(--border);
+    }
+
+    /* Cell */
+    .cell {
+      height: 52px;
+      border-bottom: 1px solid var(--border);
+      border-right: 1px solid var(--border);
+      background: var(--surface2);
+      position: relative;
+      cursor: pointer;
+      transition: background 0.15s;
+      overflow: hidden;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .cell:hover { background: #222; }
+    .cell:last-child { border-right: none; }
+
+    /* Filled cell */
+    .cell.has-class {
+      cursor: pointer;
+    }
+    .cell-inner {
+      position: absolute; inset: 2px;
+      border-radius: 6px;
+      display: flex; align-items: center; justify-content: center;
+      padding: 0 4px;
+      font-size: 0.62rem; font-weight: 700;
+      text-align: center;
+      line-height: 1.2;
+      color: #fff;
+      text-shadow: 0 1px 3px rgba(0,0,0,0.5);
+      word-break: break-word;
+      transition: filter 0.15s;
+    }
+    .cell.has-class:hover .cell-inner { filter: brightness(1.15); }
+
+    /* Libre-hoy override */
+    .cell.libre-hoy {
+      background: var(--surface2) !important;
+    }
+    .cell.libre-hoy .cell-inner {
+      opacity: 0.25;
+    }
+    .cell.libre-hoy::after {
+      content: '';
+      position: absolute; inset: 2px;
+      border-radius: 6px;
+      border: 1.5px dashed var(--orange);
+      pointer-events: none;
+    }
+
+    /* Empty cell hover shimmer */
+    .cell:not(.has-class):hover::after {
+      content: '+';
+      position: absolute; inset: 0;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.1rem; color: rgba(255,255,255,0.2);
+      font-weight: 300;
+    }
+
+    /* ── Modal backdrop ── */
+    .modal-backdrop {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.75);
+      backdrop-filter: blur(4px);
+      z-index: 100;
+      display: flex; align-items: flex-end; justify-content: center;
+      opacity: 0; pointer-events: none;
+      transition: opacity 0.25s;
+    }
+    .modal-backdrop.open {
+      opacity: 1; pointer-events: all;
+    }
+
+    /* ── Modal sheet ── */
+    .modal {
+      width: 100%; max-width: var(--max-w);
+      background: #181818;
+      border: 1px solid var(--border);
+      border-bottom: none;
+      border-radius: 20px 20px 0 0;
+      padding: 1.5rem 1.25rem 2.5rem;
+      transform: translateY(100%);
+      transition: transform 0.35s cubic-bezier(0.22,1,0.36,1);
+    }
+    .modal-backdrop.open .modal {
+      transform: translateY(0);
+    }
+
+    .modal-handle {
+      width: 36px; height: 4px;
+      background: #333; border-radius: 99px;
+      margin: 0 auto 1.25rem;
+    }
+    .modal-title {
+      font-size: 0.72rem; font-weight: 700;
+      letter-spacing: 0.1em; text-transform: uppercase;
+      color: var(--muted); margin-bottom: 0.9rem;
+    }
+    .modal-subtitle {
+      font-size: 0.78rem; color: var(--muted);
+      margin-bottom: 1.2rem;
+    }
+
+    .modal label {
+      display: block; font-size: 0.7rem; font-weight: 600;
+      letter-spacing: 0.07em; text-transform: uppercase;
+      color: var(--muted); margin-bottom: 0.4rem;
+    }
+    .modal input[type="text"] {
+      width: 100%;
+      background: #222; border: 1px solid #333; border-radius: 10px;
+      padding: 0.8rem 1rem; color: var(--text);
+      font-family: 'Space Grotesk', sans-serif; font-size: 0.95rem;
+      outline: none; transition: border-color 0.2s;
+      margin-bottom: 1.1rem;
+    }
+    .modal input[type="text"]:focus {
+      border-color: var(--orange);
+      box-shadow: 0 0 0 3px rgba(255,107,0,0.15);
+    }
+
+    /* Color palette */
+    .color-palette {
+      display: flex; gap: 0.6rem; margin-bottom: 1.4rem;
+      flex-wrap: wrap;
+    }
+    .color-swatch {
+      width: 36px; height: 36px; border-radius: 50%;
+      cursor: pointer; border: 2.5px solid transparent;
+      transition: transform 0.15s, border-color 0.15s;
+    }
+    .color-swatch:hover { transform: scale(1.1); }
+    .color-swatch.selected {
+      border-color: #fff;
+      transform: scale(1.15);
+      box-shadow: 0 0 0 2px rgba(255,255,255,0.2);
+    }
+
+    .modal-actions {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;
+    }
+    .btn-cancel {
+      padding: 0.85rem;
+      background: #222; border: 1px solid #333; border-radius: 10px;
+      color: var(--muted); font-family: 'Space Grotesk', sans-serif;
+      font-size: 0.9rem; font-weight: 600; cursor: pointer;
+      transition: background 0.15s;
+    }
+    .btn-cancel:hover { background: #2a2a2a; }
+    .btn-save-class {
+      padding: 0.85rem;
+      background: var(--orange); border: none; border-radius: 10px;
+      color: #fff; font-family: 'Space Grotesk', sans-serif;
+      font-size: 0.9rem; font-weight: 700; cursor: pointer;
+      transition: background 0.2s, box-shadow 0.2s;
+    }
+    .btn-save-class:hover {
+      background: #ff7b1a;
+      box-shadow: 0 0 16px rgba(255,107,0,0.4);
+    }
+
+    /* ── Delete confirm sheet ── */
+    .delete-sheet {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.8);
+      backdrop-filter: blur(4px);
+      z-index: 110;
+      display: flex; align-items: flex-end; justify-content: center;
+      opacity: 0; pointer-events: none;
+      transition: opacity 0.2s;
+    }
+    .delete-sheet.open { opacity: 1; pointer-events: all; }
+    .delete-panel {
+      width: 100%; max-width: var(--max-w);
+      background: #181818;
+      border: 1px solid var(--border); border-bottom: none;
+      border-radius: 20px 20px 0 0;
+      padding: 1.5rem 1.25rem 2.5rem;
+      transform: translateY(100%);
+      transition: transform 0.3s cubic-bezier(0.22,1,0.36,1);
+    }
+    .delete-sheet.open .delete-panel { transform: translateY(0); }
+    .delete-class-name {
+      font-size: 1rem; font-weight: 700; margin-bottom: 0.3rem;
+    }
+    .delete-meta {
+      font-size: 0.8rem; color: var(--muted); margin-bottom: 1.4rem;
+    }
+    .delete-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
+    .btn-delete {
+      padding: 0.85rem; background: rgba(255,60,60,0.12);
+      border: 1px solid rgba(255,60,60,0.25); border-radius: 10px;
+      color: #ff6b6b; font-family: 'Space Grotesk', sans-serif;
+      font-size: 0.9rem; font-weight: 700; cursor: pointer;
+      transition: background 0.15s;
+    }
+    .btn-delete:hover { background: rgba(255,60,60,0.22); }
+
+    /* ── Loading skeleton ── */
+    .skeleton-row {
+      height: 52px;
+      background: linear-gradient(90deg, #1a1a1a 25%, #222 50%, #1a1a1a 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.4s infinite;
+    }
+    @keyframes shimmer {
+      0%   { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
+
+    /* ── Spinner ── */
+    .spinner {
+      display: inline-block; width: 14px; height: 14px;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-top-color: #fff; border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      vertical-align: middle;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Bottom nav placeholder ── */
+    .bottom-safe { height: 2rem; }
+  </style>
+</head>
+<body>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<!-- Add class modal -->
+<div class="modal-backdrop" id="addModal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">Nueva clase</div>
+    <p class="modal-subtitle" id="modalSubtitle"></p>
+    <label for="className">Nombre de la clase</label>
+    <input type="text" id="className" placeholder="Ej: Cálculo I, Física…" maxlength="30" />
+    <label>Color</label>
+    <div class="color-palette" id="colorPalette"></div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeAddModal()">Cancelar</button>
+      <button class="btn-save-class" onclick="saveClass()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Delete confirm sheet -->
+<div class="delete-sheet" id="deleteSheet">
+  <div class="delete-panel">
+    <div class="modal-handle"></div>
+    <div class="modal-title" style="margin-bottom:.6rem">Eliminar clase</div>
+    <div class="delete-class-name" id="deleteClassName"></div>
+    <div class="delete-meta" id="deleteMeta"></div>
+    <div class="delete-actions">
+      <button class="btn-cancel" onclick="closeDeleteSheet()">Cancelar</button>
+      <button class="btn-delete" onclick="confirmDelete()">🗑 Eliminar</button>
+    </div>
+  </div>
+</div>
+
+<div class="page" id="mainPage" style="display:none">
+
+  <!-- Top bar -->
+  <div class="topbar">
+    <div class="topbar-left">
+      <button class="back-btn" onclick="history.back()">←</button>
+      <span class="page-title">📅 Mi Horario</span>
+    </div>
+    <button class="save-btn" id="saveBtn" onclick="saveToFirestore()">
+      Guardar
+    </button>
+  </div>
+
+  <!-- Day libre toggles -->
+  <div class="day-toggles" id="dayToggles"></div>
+
+  <!-- Grid -->
+  <div class="grid-wrap">
+    <div class="schedule-grid" id="scheduleGrid"></div>
+  </div>
+
+  <div class="bottom-safe"></div>
+</div>
+
+<!-- Auth gate -->
+<div class="auth-gate" id="authGate" style="display:none">
+  <p>Debes <a href="../index.html">iniciar sesión</a> para ver tu horario.</p>
+</div>
+
+<!-- Loading -->
+<div class="auth-gate" id="loadingGate">
+  <p style="color:#444">Cargando horario…</p>
+</div>
+
+<!-- ── Firebase ── -->
+<script type="module">
+  import { initializeApp }    from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+  import { getAuth, onAuthStateChanged }
+                               from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+  import { getFirestore, doc, getDoc, setDoc, serverTimestamp }
+                               from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyDkAVe9p_toQ4CAveb7iaI0bvTsJc6gSpE",
+    authDomain: "syncu-3abec.firebaseapp.com",
+    projectId: "syncu-3abec",
+    storageBucket: "syncu-3abec.firebasestorage.app",
+    messagingSenderId: "287232013909",
+    appId: "1:287232013909:web:d05003a489fa0190e806dc"
+  };
+
+  const app  = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db   = getFirestore(app);
+
+  // ── Constants ──────────────────────────────────────────────
+  const DIAS   = ['lunes','martes','miércoles','jueves','viernes'];
+  const DIAS_S = ['Lun','Mar','Mié','Jue','Vie'];
+  const HOURS  = [];
+  for (let h = 6; h <= 19; h++) HOURS.push(`${h}:00`);
+
+  const COLORS = ['#FF6B00','#E63946','#2EC4B6','#8338EC','#3A86FF','#06D6A0'];
+
+  // Map JS day (0=Sun) → dia name
+  const TODAY_IDX = (() => {
+    const d = new Date().getDay(); // 0=Sun,1=Mon…
+    return d >= 1 && d <= 5 ? d - 1 : -1; // -1 if weekend
+  })();
+
+  // ── State ──────────────────────────────────────────────────
+  let currentUser = null;
+  // bloques: Map<`${dia}|${hora}`, {clase, color, libre}>
+  let bloques = {};
+  // diasLibresHoy: Set of dia strings marked free today
+  let diasLibresHoy = new Set();
+
+  let pendingCell = null; // {dia, hora} for the modal
+  let selectedColor = COLORS[0];
+  let deleteTarget  = null; // {dia, hora}
+
+  // ── Auth gate ──────────────────────────────────────────────
+  onAuthStateChanged(auth, async user => {
+    document.getElementById('loadingGate').style.display = 'none';
+    if (!user) {
+      document.getElementById('authGate').style.display = 'block';
+      return;
+    }
+    currentUser = user;
+    document.getElementById('mainPage').style.display = 'block';
+    await loadFromFirestore();
+    buildUI();
+  });
+
+  // ── Load ───────────────────────────────────────────────────
+  async function loadFromFirestore() {
+    try {
+      const ref  = doc(db, 'horarios', currentUser.uid);
+      const snap = await getDoc(ref);
+      if (snap.exists()) {
+        const data = snap.data();
+        (data.bloques || []).forEach(b => {
+          bloques[key(b.dia, b.hora)] = {
+            clase: b.clase, color: b.color, libre: b.libre || false
+          };
+        });
+        (data.diasLibresHoy || []).forEach(d => diasLibresHoy.add(d));
+      }
+    } catch(e) { showToast('Error al cargar horario', 'err'); }
+  }
+
+  // ── Save ───────────────────────────────────────────────────
+  window.saveToFirestore = async function() {
+    if (!currentUser) return;
+    const btn = document.getElementById('saveBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span>';
+
+    const bloquesArr = Object.entries(bloques).map(([k, v]) => {
+      const [dia, hora] = k.split('|');
+      return { dia, hora, clase: v.clase, color: v.color, libre: v.libre };
+    });
+
+    try {
+      await setDoc(doc(db, 'horarios', currentUser.uid), {
+        bloques: bloquesArr,
+        diasLibresHoy: [...diasLibresHoy],
+        updatedAt: serverTimestamp(),
+      });
+      showToast('✓ Horario guardado', 'ok');
+    } catch(e) {
+      showToast('Error al guardar', 'err');
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = 'Guardar';
+    }
+  };
+
+  // ── Build UI ───────────────────────────────────────────────
+  function buildUI() {
+    buildDayToggles();
+    buildGrid();
+  }
+
+  function buildDayToggles() {
+    const wrap = document.getElementById('dayToggles');
+    wrap.innerHTML = '';
+    DIAS.forEach((dia, i) => {
+      const tag = document.createElement('div');
+      tag.className = `day-tag ${diasLibresHoy.has(dia) ? 'libre' : ''}`;
+      tag.dataset.dia = dia;
+      tag.innerHTML = `<span class="dot"></span>${DIAS_S[i]} libre hoy`;
+      tag.addEventListener('click', () => toggleDayLibre(dia, tag));
+      wrap.appendChild(tag);
+    });
+  }
+
+  function toggleDayLibre(dia, tag) {
+    if (diasLibresHoy.has(dia)) {
+      diasLibresHoy.delete(dia);
+      tag.classList.remove('libre');
+    } else {
+      diasLibresHoy.add(dia);
+      tag.classList.add('libre');
+    }
+    refreshGridCells();
+  }
+
+  function buildGrid() {
+    const grid = document.getElementById('scheduleGrid');
+    grid.innerHTML = '';
+
+    // Header row
+    const timeHead = document.createElement('div');
+    timeHead.className = 'col-header';
+    grid.appendChild(timeHead);
+
+    DIAS.forEach((dia, i) => {
+      const h = document.createElement('div');
+      h.className = `col-header ${i === TODAY_IDX ? 'today' : ''}`;
+      h.textContent = DIAS_S[i];
+      grid.appendChild(h);
+    });
+
+    // Rows
+    HOURS.forEach(hora => {
+      // Time label
+      const lbl = document.createElement('div');
+      lbl.className = 'time-label';
+      lbl.textContent = hora;
+      grid.appendChild(lbl);
+
+      // Cells
+      DIAS.forEach(dia => {
+        const cell = buildCell(dia, hora);
+        grid.appendChild(cell);
+      });
+    });
+  }
+
+  function buildCell(dia, hora) {
+    const cell = document.createElement('div');
+    cell.className = 'cell';
+    cell.dataset.dia  = dia;
+    cell.dataset.hora = hora;
+    renderCell(cell, dia, hora);
+    attachCellEvents(cell, dia, hora);
+    return cell;
+  }
+
+  function renderCell(cell, dia, hora) {
+    const k = key(dia, hora);
+    const b = bloques[k];
+    const esLibreHoy = diasLibresHoy.has(dia);
+
+    // Reset
+    cell.className = 'cell';
+    cell.innerHTML = '';
+    cell.style.background = '';
+
+    if (b) {
+      cell.classList.add('has-class');
+      if (esLibreHoy) cell.classList.add('libre-hoy');
+      else cell.style.background = 'transparent';
+
+      const inner = document.createElement('div');
+      inner.className = 'cell-inner';
+      inner.style.background = b.color;
+      inner.textContent = b.clase;
+      cell.appendChild(inner);
+    }
+  }
+
+  function refreshGridCells() {
+    document.querySelectorAll('.cell').forEach(cell => {
+      renderCell(cell, cell.dataset.dia, cell.dataset.hora);
+      attachCellEvents(cell, cell.dataset.dia, cell.dataset.hora);
+    });
+  }
+
+  function attachCellEvents(cell, dia, hora) {
+    // Remove old listeners by cloning
+    const fresh = cell.cloneNode(true);
+    cell.replaceWith(fresh);
+
+    let pressTimer;
+
+    fresh.addEventListener('click', () => {
+      const k = key(dia, hora);
+      if (bloques[k]) return; // filled cell — ignore single tap (use long press)
+      openAddModal(dia, hora);
+    });
+
+    // Long press → delete
+    fresh.addEventListener('pointerdown', () => {
+      pressTimer = setTimeout(() => {
+        if (bloques[key(dia, hora)]) openDeleteSheet(dia, hora);
+      }, 500);
+    });
+    fresh.addEventListener('pointerup',    () => clearTimeout(pressTimer));
+    fresh.addEventListener('pointerleave', () => clearTimeout(pressTimer));
+  }
+
+  // ── Add modal ──────────────────────────────────────────────
+  window.openAddModal = function(dia, hora) {
+    pendingCell = { dia, hora };
+    document.getElementById('modalSubtitle').textContent =
+      `${capitalize(dia)} · ${hora}`;
+    document.getElementById('className').value = '';
+
+    // Color palette
+    const pal = document.getElementById('colorPalette');
+    pal.innerHTML = '';
+    selectedColor = COLORS[0];
+    COLORS.forEach(c => {
+      const sw = document.createElement('div');
+      sw.className = `color-swatch ${c === selectedColor ? 'selected' : ''}`;
+      sw.style.background = c;
+      sw.dataset.color = c;
+      sw.addEventListener('click', () => {
+        document.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('selected'));
+        sw.classList.add('selected');
+        selectedColor = c;
+      });
+      pal.appendChild(sw);
+    });
+
+    document.getElementById('addModal').classList.add('open');
+    setTimeout(() => document.getElementById('className').focus(), 350);
+  };
+
+  window.closeAddModal = function() {
+    document.getElementById('addModal').classList.remove('open');
+    pendingCell = null;
+  };
+
+  window.saveClass = function() {
+    const nombre = document.getElementById('className').value.trim();
+    if (!nombre) {
+      document.getElementById('className').style.borderColor = '#ff6b6b';
+      return;
+    }
+    if (!pendingCell) return;
+
+    const { dia, hora } = pendingCell;
+    bloques[key(dia, hora)] = { clase: nombre, color: selectedColor, libre: false };
+
+    // Re-render the specific cell
+    const cell = findCell(dia, hora);
+    if (cell) {
+      renderCell(cell, dia, hora);
+      attachCellEvents(cell, dia, hora);
+    }
+
+    closeAddModal();
+    showToast('Clase agregada', 'ok');
+  };
+
+  // ── Delete sheet ───────────────────────────────────────────
+  window.openDeleteSheet = function(dia, hora) {
+    const b = bloques[key(dia, hora)];
+    if (!b) return;
+    deleteTarget = { dia, hora };
+    document.getElementById('deleteClassName').textContent = b.clase;
+    document.getElementById('deleteMeta').textContent = `${capitalize(dia)} · ${hora}`;
+    document.getElementById('deleteSheet').classList.add('open');
+  };
+
+  window.closeDeleteSheet = function() {
+    document.getElementById('deleteSheet').classList.remove('open');
+    deleteTarget = null;
+  };
+
+  window.confirmDelete = function() {
+    if (!deleteTarget) return;
+    const { dia, hora } = deleteTarget;
+    delete bloques[key(dia, hora)];
+    const cell = findCell(dia, hora);
+    if (cell) {
+      renderCell(cell, dia, hora);
+      attachCellEvents(cell, dia, hora);
+    }
+    closeDeleteSheet();
+    showToast('Clase eliminada', 'ok');
+  };
+
+  // ── Helpers ────────────────────────────────────────────────
+  function key(dia, hora) { return `${dia}|${hora}`; }
+  function capitalize(s)  { return s.charAt(0).toUpperCase() + s.slice(1); }
+  function findCell(dia, hora) {
+    return document.querySelector(`.cell[data-dia="${dia}"][data-hora="${hora}"]`);
+  }
+
+  function showToast(msg, type = 'ok') {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.className = `toast ${type} show`;
+    setTimeout(() => t.classList.remove('show'), 2400);
+  }
+
+  // Close modals on backdrop tap
+  document.getElementById('addModal').addEventListener('click', e => {
+    if (e.target === e.currentTarget) closeAddModal();
+  });
+  document.getElementById('deleteSheet').addEventListener('click', e => {
+    if (e.target === e.currentTarget) closeDeleteSheet();
+  });
+
+  // Enter to save class
+  document.getElementById('className').addEventListener('keydown', e => {
+    if (e.key === 'Enter') window.saveClass();
+  });
+</script>
+
+<script>
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/syncu/sw.js')
+      .catch(err => console.warn('SW:', err));
+  }
+</script>
+</body>
+</html>
