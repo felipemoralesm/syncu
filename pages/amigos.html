@@ -1,0 +1,768 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SyncU — Amigos</title>
+  <link rel="manifest" href="../manifest.json" />
+  <meta name="theme-color" content="#FF6B00" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --orange:   #FF6B00;
+      --bg:       #0D0D0D;
+      --surface:  #141414;
+      --card:     #1A1A1A;
+      --card2:    #202020;
+      --text:     #FFFFFF;
+      --muted:    #666;
+      --border:   rgba(255,255,255,0.08);
+      --green:    #22C55E;
+      --gray:     #6B7280;
+      --max-w:    430px;
+    }
+
+    html, body {
+      min-height: 100%; background: var(--bg);
+      color: var(--text); font-family: 'Space Grotesk', sans-serif;
+      overflow-x: hidden;
+    }
+    body::before {
+      content: ''; position: fixed; inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+      pointer-events: none; z-index: 0;
+    }
+
+    /* ── Page ── */
+    .page {
+      position: relative; z-index: 1;
+      max-width: var(--max-w); margin: 0 auto;
+      padding-bottom: 6rem;
+    }
+
+    /* ── Topbar ── */
+    .topbar {
+      position: sticky; top: 0; z-index: 50;
+      background: rgba(13,13,13,0.93);
+      backdrop-filter: blur(14px);
+      border-bottom: 1px solid var(--border);
+      padding: 1rem 1rem 0.8rem;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .topbar-left { display: flex; align-items: center; gap: 0.6rem; }
+    .back-btn {
+      background: none; border: none; cursor: pointer;
+      color: var(--muted); font-size: 1.1rem; padding: 0.2rem;
+      transition: color 0.15s;
+    }
+    .back-btn:hover { color: var(--text); }
+    .page-title { font-size: 1.1rem; font-weight: 700; letter-spacing: -0.3px; }
+    .grupo-btn {
+      display: flex; align-items: center; gap: 0.35rem;
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 8px; padding: 0.42rem 0.85rem;
+      color: var(--text); font-family: 'Space Grotesk', sans-serif;
+      font-size: 0.78rem; font-weight: 600; cursor: pointer;
+      transition: background 0.15s, border-color 0.15s;
+    }
+    .grupo-btn:hover { background: var(--card2); border-color: var(--orange); color: var(--orange); }
+
+    /* ── Toast ── */
+    .toast {
+      position: fixed; bottom: 5rem; left: 50%;
+      transform: translateX(-50%) translateY(20px);
+      background: #1e1e1e; border: 1px solid var(--border);
+      color: var(--text); font-size: 0.82rem; font-weight: 500;
+      padding: 0.55rem 1.1rem; border-radius: 99px;
+      opacity: 0; pointer-events: none;
+      transition: opacity 0.25s, transform 0.25s;
+      z-index: 300; white-space: nowrap;
+    }
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+    .toast.ok  { border-color: var(--green);  color: var(--green); }
+    .toast.err { border-color: #ff6b6b; color: #ff6b6b; }
+
+    /* ── Section labels ── */
+    .section-label {
+      font-size: 0.66rem; font-weight: 700; letter-spacing: 0.1em;
+      text-transform: uppercase; color: var(--orange);
+      padding: 1.1rem 1rem 0.6rem;
+      display: flex; align-items: center; gap: 0.5rem;
+    }
+    .section-label::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+    /* ── Favoritos strip ── */
+    .fav-strip {
+      display: flex; gap: 1rem;
+      padding: 0.25rem 1rem 1rem;
+      overflow-x: auto; scrollbar-width: none;
+    }
+    .fav-strip::-webkit-scrollbar { display: none; }
+    .fav-avatar-wrap {
+      display: flex; flex-direction: column; align-items: center; gap: 0.35rem;
+      flex-shrink: 0; cursor: pointer;
+    }
+    .fav-avatar-ring {
+      position: relative; width: 52px; height: 52px;
+    }
+    .fav-avatar {
+      width: 52px; height: 52px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.2rem; font-weight: 700; color: #fff;
+      border: 2px solid var(--orange);
+      transition: transform 0.15s;
+    }
+    .fav-avatar-wrap:hover .fav-avatar { transform: scale(1.07); }
+    .fav-dot {
+      position: absolute; bottom: 1px; right: 1px;
+      width: 12px; height: 12px; border-radius: 50%;
+      border: 2px solid var(--bg);
+    }
+    .fav-name {
+      font-size: 0.65rem; font-weight: 600; color: var(--muted);
+      max-width: 52px; text-align: center;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .fav-empty {
+      color: var(--muted); font-size: 0.82rem;
+      padding: 0 1rem 1rem; font-style: italic;
+    }
+
+    /* ── Search ── */
+    .search-wrap {
+      padding: 0 1rem 0.5rem;
+      position: relative;
+    }
+    .search-icon {
+      position: absolute; left: 1.9rem; top: 50%;
+      transform: translateY(-50%);
+      color: var(--muted); font-size: 0.9rem; pointer-events: none;
+    }
+    .search-input {
+      width: 100%;
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 12px; padding: 0.75rem 1rem 0.75rem 2.5rem;
+      color: var(--text); font-family: 'Space Grotesk', sans-serif;
+      font-size: 0.9rem; outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .search-input::placeholder { color: #3a3a3a; }
+    .search-input:focus {
+      border-color: var(--orange);
+      box-shadow: 0 0 0 3px rgba(255,107,0,0.12);
+    }
+
+    /* ── Search result card ── */
+    .search-result {
+      margin: 0.5rem 1rem 0;
+      background: var(--card);
+      border: 1px solid var(--orange);
+      border-radius: 14px;
+      padding: 1rem;
+      display: none; /* shown when result found */
+      animation: fadeIn 0.25s ease;
+    }
+    .search-result.visible { display: block; }
+    @keyframes fadeIn { from { opacity:0; transform:translateY(-6px); } to { opacity:1; transform:none; } }
+    .result-row {
+      display: flex; align-items: center; gap: 0.85rem;
+    }
+    .result-info { flex: 1; min-width: 0; }
+    .result-name { font-size: 0.95rem; font-weight: 700; }
+    .result-meta { font-size: 0.75rem; color: var(--muted); margin-top: 0.1rem;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .result-note { font-size: 0.72rem; color: var(--muted); margin-top: 0.55rem; }
+    .add-btn {
+      background: var(--orange); color: #fff; border: none; border-radius: 8px;
+      padding: 0.45rem 0.9rem; font-family: 'Space Grotesk', sans-serif;
+      font-size: 0.78rem; font-weight: 700; cursor: pointer; flex-shrink: 0;
+      transition: background 0.2s, box-shadow 0.2s;
+    }
+    .add-btn:hover { background: #ff7b1a; box-shadow: 0 0 14px rgba(255,107,0,0.4); }
+    .add-btn:disabled { opacity: .5; cursor: not-allowed; }
+    .add-btn.added { background: #2a2a2a; color: var(--muted); cursor: default; }
+
+    /* ── Friend card ── */
+    .friends-list { padding: 0 1rem; display: flex; flex-direction: column; gap: 0.6rem; }
+    .friend-card {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 14px; padding: 0.9rem 1rem;
+      display: flex; align-items: center; gap: 0.85rem;
+      transition: border-color 0.2s;
+      animation: fadeIn 0.3s ease;
+    }
+    .friend-card:hover { border-color: rgba(255,107,0,0.2); }
+
+    /* Avatar */
+    .avatar {
+      width: 44px; height: 44px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.05rem; font-weight: 800; color: #fff; flex-shrink: 0;
+      position: relative;
+    }
+    .avatar-dot {
+      position: absolute; bottom: 0; right: 0;
+      width: 11px; height: 11px; border-radius: 50%;
+      border: 2px solid var(--card);
+    }
+
+    .friend-info { flex: 1; min-width: 0; }
+    .friend-name {
+      font-size: 0.92rem; font-weight: 700;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .friend-carrera {
+      font-size: 0.72rem; color: var(--muted); margin-top: 0.1rem;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .friend-status {
+      display: flex; align-items: center; gap: 0.3rem;
+      font-size: 0.7rem; font-weight: 600; margin-top: 0.3rem;
+    }
+    .status-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+
+    .friend-actions { display: flex; align-items: center; gap: 0.5rem; flex-shrink: 0; }
+    .star-btn {
+      background: none; border: none; cursor: pointer;
+      font-size: 1.1rem; line-height: 1;
+      transition: transform 0.2s;
+      filter: grayscale(1) opacity(0.4);
+    }
+    .star-btn.active { filter: none; }
+    .star-btn:hover { transform: scale(1.2); filter: none; }
+
+    /* ── Empty states ── */
+    .empty-state {
+      text-align: center; padding: 2.5rem 1rem;
+      color: var(--muted); font-size: 0.85rem;
+    }
+    .empty-icon { font-size: 2rem; margin-bottom: 0.5rem; }
+
+    /* ── Spinner ── */
+    .spinner {
+      display: inline-block; width: 14px; height: 14px;
+      border: 2px solid rgba(255,255,255,0.25);
+      border-top-color: #fff; border-radius: 50%;
+      animation: spin 0.7s linear infinite; vertical-align: middle;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Modal backdrop ── */
+    .modal-backdrop {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.78);
+      backdrop-filter: blur(5px); z-index: 100;
+      display: flex; align-items: flex-end; justify-content: center;
+      opacity: 0; pointer-events: none; transition: opacity 0.25s;
+    }
+    .modal-backdrop.open { opacity: 1; pointer-events: all; }
+
+    /* ── Group modal ── */
+    .modal {
+      width: 100%; max-width: var(--max-w);
+      background: #181818; border: 1px solid var(--border);
+      border-bottom: none; border-radius: 20px 20px 0 0;
+      padding: 1.25rem 1.25rem 2.5rem;
+      transform: translateY(100%);
+      transition: transform 0.35s cubic-bezier(0.22,1,0.36,1);
+      max-height: 82vh; display: flex; flex-direction: column;
+    }
+    .modal-backdrop.open .modal { transform: translateY(0); }
+    .modal-handle {
+      width: 36px; height: 4px; background: #333;
+      border-radius: 99px; margin: 0 auto 1.1rem;
+    }
+    .modal-title {
+      font-size: 0.7rem; font-weight: 700; letter-spacing: 0.1em;
+      text-transform: uppercase; color: var(--muted); margin-bottom: 0.9rem;
+    }
+    .modal label {
+      display: block; font-size: 0.7rem; font-weight: 600;
+      letter-spacing: 0.07em; text-transform: uppercase;
+      color: var(--muted); margin-bottom: 0.4rem;
+    }
+    .modal input[type="text"] {
+      width: 100%; background: #222; border: 1px solid #333;
+      border-radius: 10px; padding: 0.75rem 1rem; color: var(--text);
+      font-family: 'Space Grotesk', sans-serif; font-size: 0.9rem;
+      outline: none; margin-bottom: 1rem;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .modal input[type="text"]:focus {
+      border-color: var(--orange); box-shadow: 0 0 0 3px rgba(255,107,0,0.15);
+    }
+    .member-label { margin-bottom: 0.5rem !important; }
+    .member-list {
+      flex: 1; overflow-y: auto; display: flex; flex-direction: column;
+      gap: 0.5rem; margin-bottom: 1rem; scrollbar-width: thin;
+      scrollbar-color: #2a2a2a transparent;
+    }
+    .member-row {
+      display: flex; align-items: center; gap: 0.75rem;
+      background: #222; border: 1px solid #333; border-radius: 10px;
+      padding: 0.65rem 0.9rem; cursor: pointer;
+      transition: border-color 0.2s, background 0.15s;
+    }
+    .member-row.selected { border-color: var(--orange); background: rgba(255,107,0,0.07); }
+    .member-check {
+      width: 18px; height: 18px; border-radius: 50%;
+      border: 2px solid #444; background: none; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.65rem; color: transparent; transition: all 0.15s;
+    }
+    .member-row.selected .member-check {
+      background: var(--orange); border-color: var(--orange); color: #fff;
+    }
+    .member-row-name { font-size: 0.88rem; font-weight: 600; }
+    .member-row-meta { font-size: 0.7rem; color: var(--muted); }
+    .modal-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
+    .btn-cancel {
+      padding: 0.85rem; background: #222; border: 1px solid #333;
+      border-radius: 10px; color: var(--muted);
+      font-family: 'Space Grotesk', sans-serif; font-size: 0.9rem;
+      font-weight: 600; cursor: pointer; transition: background 0.15s;
+    }
+    .btn-cancel:hover { background: #2a2a2a; }
+    .btn-create-group {
+      padding: 0.85rem; background: var(--orange); border: none;
+      border-radius: 10px; color: #fff;
+      font-family: 'Space Grotesk', sans-serif; font-size: 0.9rem;
+      font-weight: 700; cursor: pointer;
+      transition: background 0.2s, box-shadow 0.2s;
+    }
+    .btn-create-group:hover { background: #ff7b1a; box-shadow: 0 0 16px rgba(255,107,0,0.4); }
+    .btn-create-group:disabled { opacity: .5; cursor: not-allowed; }
+
+    /* ── Auth gate ── */
+    .auth-gate {
+      text-align: center; padding: 4rem 2rem;
+      color: var(--muted); font-size: 0.9rem;
+    }
+    .auth-gate a { color: var(--orange); }
+
+    /* ── Skeleton ── */
+    .skel {
+      height: 68px; border-radius: 14px; margin: 0 1rem 0.6rem;
+      background: linear-gradient(90deg, #1a1a1a 25%, #222 50%, #1a1a1a 75%);
+      background-size: 200% 100%; animation: shimmer 1.4s infinite;
+    }
+    @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+  </style>
+</head>
+<body>
+
+<div class="toast" id="toast"></div>
+
+<!-- Group modal -->
+<div class="modal-backdrop" id="groupModal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">Crear grupo</div>
+    <label for="groupName">Nombre del grupo</label>
+    <input type="text" id="groupName" placeholder="Ej: Parcial Cálculo, Lab Física…" maxlength="40" />
+    <label class="member-label">Seleccionar amigos</label>
+    <div class="member-list" id="memberList"></div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeGroupModal()">Cancelar</button>
+      <button class="btn-create-group" id="createGroupBtn" onclick="createGroup()">Crear grupo</button>
+    </div>
+  </div>
+</div>
+
+<!-- Auth gate -->
+<div id="authGate" style="display:none" class="auth-gate">
+  <p>Debes <a href="../index.html">iniciar sesión</a> para ver tus amigos.</p>
+</div>
+
+<!-- Loading skeletons -->
+<div id="loadingGate">
+  <div style="height:56px"></div>
+  <div class="skel"></div><div class="skel"></div><div class="skel"></div>
+</div>
+
+<!-- Main page -->
+<div class="page" id="mainPage" style="display:none">
+
+  <!-- Topbar -->
+  <div class="topbar">
+    <div class="topbar-left">
+      <button class="back-btn" onclick="history.back()">←</button>
+      <span class="page-title">👥 Amigos</span>
+    </div>
+    <button class="grupo-btn" onclick="openGroupModal()">＋ Grupo</button>
+  </div>
+
+  <!-- Favoritos -->
+  <div class="section-label">⭐ Favoritos</div>
+  <div class="fav-strip" id="favStrip"></div>
+
+  <!-- Search -->
+  <div class="section-label">Buscar</div>
+  <div class="search-wrap">
+    <span class="search-icon">🔍</span>
+    <input class="search-input" type="email" id="searchInput"
+           placeholder="Buscar por correo @uniandes.edu.co"
+           autocomplete="off" />
+  </div>
+  <div class="search-result" id="searchResult"></div>
+
+  <!-- Friends list -->
+  <div class="section-label">Mis amigos <span id="friendCount" style="color:var(--muted);font-weight:500;font-size:0.7rem"></span></div>
+  <div class="friends-list" id="friendsList"></div>
+
+</div>
+
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+  import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+  import {
+    getFirestore, doc, getDoc, updateDoc, setDoc,
+    collection, query, where, getDocs, arrayUnion, arrayRemove, serverTimestamp
+  } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyDkAVe9p_toQ4CAveb7iaI0bvTsJc6gSpE",
+    authDomain: "syncu-3abec.firebaseapp.com",
+    projectId: "syncu-3abec",
+    storageBucket: "syncu-3abec.firebasestorage.app",
+    messagingSenderId: "287232013909",
+    appId: "1:287232013909:web:d05003a489fa0190e806dc"
+  };
+
+  const app  = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db   = getFirestore(app);
+
+  // ── Avatar color palette ──────────────────────────────────
+  const AV_COLORS = ['#FF6B00','#E63946','#2EC4B6','#8338EC','#3A86FF','#06D6A0','#F4A261','#E76F51'];
+  function avatarColor(uid) {
+    let hash = 0;
+    for (let c of uid) hash = (hash * 31 + c.charCodeAt(0)) & 0xffffffff;
+    return AV_COLORS[Math.abs(hash) % AV_COLORS.length];
+  }
+  function initial(name) { return (name || '?').charAt(0).toUpperCase(); }
+
+  // ── State ────────────────────────────────────────────────
+  let me = null;          // current user doc
+  let myUid = null;
+  let friendDocs = [];    // array of friend user docs {uid, nombre, carrera, disponible}
+  let selectedMembers = new Set();
+
+  // ── Auth ─────────────────────────────────────────────────
+  onAuthStateChanged(auth, async user => {
+    document.getElementById('loadingGate').style.display = 'none';
+    if (!user) { document.getElementById('authGate').style.display = 'block'; return; }
+    myUid = user.uid;
+    await loadMyDoc();
+    document.getElementById('mainPage').style.display = 'block';
+    await loadFriends();
+    renderAll();
+    setupSearch();
+  });
+
+  async function loadMyDoc() {
+    const snap = await getDoc(doc(db, 'usuarios', myUid));
+    me = snap.exists() ? { uid: myUid, ...snap.data() } : { uid: myUid, amigos: [], favoritos: [] };
+  }
+
+  async function loadFriends() {
+    const amigos = me.amigos || [];
+    if (!amigos.length) { friendDocs = []; return; }
+    // Fetch in batches of 10 (Firestore 'in' limit)
+    friendDocs = [];
+    for (let i = 0; i < amigos.length; i += 10) {
+      const batch = amigos.slice(i, i + 10);
+      const q = query(collection(db, 'usuarios'), where('__name__', 'in', batch));
+      const snaps = await getDocs(q);
+      snaps.forEach(s => friendDocs.push({ uid: s.id, ...s.data() }));
+    }
+  }
+
+  // ── Render ───────────────────────────────────────────────
+  function renderAll() {
+    renderFavStrip();
+    renderFriendsList();
+  }
+
+  function renderFavStrip() {
+    const strip = document.getElementById('favStrip');
+    const favs = (me.favoritos || []);
+    const favFriends = friendDocs.filter(f => favs.includes(f.uid));
+
+    if (!favFriends.length) {
+      strip.innerHTML = '<p class="fav-empty">Aún no tienes favoritos. Toca ⭐ en un amigo.</p>';
+      return;
+    }
+    strip.innerHTML = '';
+    favFriends.forEach(f => {
+      const wrap = document.createElement('div');
+      wrap.className = 'fav-avatar-wrap';
+      const color = avatarColor(f.uid);
+      const dotColor = f.disponible ? 'var(--green)' : 'var(--gray)';
+      wrap.innerHTML = `
+        <div class="fav-avatar-ring">
+          <div class="fav-avatar" style="background:${color}">${initial(f.nombre)}</div>
+          <div class="fav-dot" style="background:${dotColor}"></div>
+        </div>
+        <div class="fav-name">${f.nombre.split(' ')[0]}</div>`;
+      strip.appendChild(wrap);
+    });
+  }
+
+  function renderFriendsList() {
+    const list = document.getElementById('friendsList');
+    const countEl = document.getElementById('friendCount');
+    countEl.textContent = friendDocs.length ? `· ${friendDocs.length}` : '';
+
+    if (!friendDocs.length) {
+      list.innerHTML = `<div class="empty-state"><div class="empty-icon">🤝</div>Aún no tienes amigos en SyncU.<br>Búscalos por su correo.</div>`;
+      return;
+    }
+    list.innerHTML = '';
+    friendDocs.forEach(f => list.appendChild(buildFriendCard(f)));
+  }
+
+  function buildFriendCard(f) {
+    const card = document.createElement('div');
+    card.className = 'friend-card';
+    card.dataset.uid = f.uid;
+    const color   = avatarColor(f.uid);
+    const isFav   = (me.favoritos || []).includes(f.uid);
+    const libre   = f.disponible;
+    const dotColor   = libre ? 'var(--green)' : 'var(--gray)';
+    const statusText = libre ? 'Libre ahora' : 'En clase';
+    const statusCol  = libre ? 'var(--green)' : 'var(--gray)';
+
+    card.innerHTML = `
+      <div class="avatar" style="background:${color}">
+        ${initial(f.nombre)}
+        <div class="avatar-dot" style="background:${dotColor}"></div>
+      </div>
+      <div class="friend-info">
+        <div class="friend-name">${f.nombre}</div>
+        <div class="friend-carrera">${f.carrera || ''} ${f.semestre ? '· Sem ' + f.semestre : ''}</div>
+        <div class="friend-status">
+          <div class="status-dot" style="background:${statusCol}"></div>
+          <span style="color:${statusCol}">${statusText}</span>
+        </div>
+      </div>
+      <div class="friend-actions">
+        <button class="star-btn ${isFav ? 'active' : ''}" title="${isFav ? 'Quitar favorito' : 'Marcar favorito'}"
+          onclick="toggleFav('${f.uid}', this)">⭐</button>
+      </div>`;
+    return card;
+  }
+
+  // ── Toggle favorito ──────────────────────────────────────
+  window.toggleFav = async function(uid, btn) {
+    const isFav = (me.favoritos || []).includes(uid);
+    try {
+      if (isFav) {
+        await updateDoc(doc(db, 'usuarios', myUid), { favoritos: arrayRemove(uid) });
+        me.favoritos = (me.favoritos || []).filter(x => x !== uid);
+        btn.classList.remove('active');
+        showToast('Quitado de favoritos', 'ok');
+      } else {
+        await updateDoc(doc(db, 'usuarios', myUid), { favoritos: arrayUnion(uid) });
+        me.favoritos = [...(me.favoritos || []), uid];
+        btn.classList.add('active');
+        showToast('⭐ Marcado como favorito', 'ok');
+      }
+      renderFavStrip();
+    } catch(e) { showToast('Error al actualizar favorito', 'err'); }
+  };
+
+  // ── Search ───────────────────────────────────────────────
+  function setupSearch() {
+    const input = document.getElementById('searchInput');
+    let debounce;
+    input.addEventListener('input', () => {
+      clearTimeout(debounce);
+      const val = input.value.trim();
+      if (!val) { hideSearchResult(); return; }
+      debounce = setTimeout(() => searchUser(val), 600);
+    });
+  }
+
+  async function searchUser(email) {
+    const resultEl = document.getElementById('searchResult');
+    if (!email.endsWith('@uniandes.edu.co')) {
+      resultEl.innerHTML = `<p style="font-size:.8rem;color:var(--muted)">Solo correos @uniandes.edu.co</p>`;
+      resultEl.classList.add('visible');
+      return;
+    }
+    resultEl.innerHTML = `<div style="text-align:center;padding:.5rem"><span class="spinner"></span></div>`;
+    resultEl.classList.add('visible');
+
+    try {
+      const q = query(collection(db, 'usuarios'), where('correo', '==', email));
+      const snaps = await getDocs(q);
+      if (snaps.empty) {
+        resultEl.innerHTML = `<p style="font-size:.8rem;color:var(--muted)">No se encontró ningún Uniandino con ese correo.</p>`;
+        return;
+      }
+      const found = { uid: snaps.docs[0].id, ...snaps.docs[0].data() };
+
+      if (found.uid === myUid) {
+        resultEl.innerHTML = `<p style="font-size:.8rem;color:var(--muted)">Ese eres tú 😄</p>`;
+        return;
+      }
+
+      const isAlready = (me.amigos || []).includes(found.uid);
+      const color = avatarColor(found.uid);
+
+      resultEl.innerHTML = `
+        <div class="result-row">
+          <div class="avatar" style="background:${color};width:42px;height:42px;font-size:.95rem;flex-shrink:0">
+            ${initial(found.nombre)}
+          </div>
+          <div class="result-info">
+            <div class="result-name">${found.nombre}</div>
+            <div class="result-meta">${found.carrera || ''} ${found.semestre ? '· Sem ' + found.semestre : ''}</div>
+          </div>
+          <button class="add-btn ${isAlready ? 'added' : ''}"
+            id="addFriendBtn"
+            onclick="addFriend('${found.uid}', '${found.nombre}')"
+            ${isAlready ? 'disabled' : ''}>
+            ${isAlready ? 'Ya es amigo' : '+ Añadir'}
+          </button>
+        </div>
+        ${isAlready ? '' : '<p class="result-note">Se añadirá a ambas listas de amigos.</p>'}`;
+    } catch(e) {
+      resultEl.innerHTML = `<p style="font-size:.8rem;color:var(--muted)">Error al buscar. Intenta de nuevo.</p>`;
+    }
+  }
+
+  function hideSearchResult() {
+    const el = document.getElementById('searchResult');
+    el.classList.remove('visible');
+    el.innerHTML = '';
+  }
+
+  window.addFriend = async function(uid, nombre) {
+    const btn = document.getElementById('addFriendBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span>';
+    try {
+      // Bidireccional
+      await updateDoc(doc(db, 'usuarios', myUid), { amigos: arrayUnion(uid) });
+      await updateDoc(doc(db, 'usuarios', uid),   { amigos: arrayUnion(myUid) });
+
+      me.amigos = [...(me.amigos || []), uid];
+      btn.className = 'add-btn added';
+      btn.textContent = 'Ya es amigo';
+      showToast(`✓ ${nombre} añadido`, 'ok');
+
+      // Reload friends list
+      await loadFriends();
+      renderFriendsList();
+      renderFavStrip();
+    } catch(e) {
+      showToast('Error al añadir amigo', 'err');
+      btn.disabled = false;
+      btn.textContent = '+ Añadir';
+    }
+  };
+
+  // ── Group modal ──────────────────────────────────────────
+  window.openGroupModal = function() {
+    document.getElementById('groupName').value = '';
+    selectedMembers.clear();
+    renderMemberList();
+    document.getElementById('groupModal').classList.add('open');
+    setTimeout(() => document.getElementById('groupName').focus(), 350);
+  };
+  window.closeGroupModal = function() {
+    document.getElementById('groupModal').classList.remove('open');
+  };
+
+  function renderMemberList() {
+    const list = document.getElementById('memberList');
+    if (!friendDocs.length) {
+      list.innerHTML = '<p style="font-size:.82rem;color:var(--muted);text-align:center;padding:1rem">Añade amigos primero para crear un grupo.</p>';
+      return;
+    }
+    list.innerHTML = '';
+    friendDocs.forEach(f => {
+      const row = document.createElement('div');
+      row.className = `member-row ${selectedMembers.has(f.uid) ? 'selected' : ''}`;
+      row.dataset.uid = f.uid;
+      const color = avatarColor(f.uid);
+      row.innerHTML = `
+        <div class="member-check">✓</div>
+        <div class="avatar" style="background:${color};width:34px;height:34px;font-size:.85rem;flex-shrink:0">
+          ${initial(f.nombre)}</div>
+        <div>
+          <div class="member-row-name">${f.nombre}</div>
+          <div class="member-row-meta">${f.carrera || ''}</div>
+        </div>`;
+      row.addEventListener('click', () => {
+        if (selectedMembers.has(f.uid)) {
+          selectedMembers.delete(f.uid);
+          row.classList.remove('selected');
+        } else {
+          selectedMembers.add(f.uid);
+          row.classList.add('selected');
+        }
+      });
+      list.appendChild(row);
+    });
+  }
+
+  window.createGroup = async function() {
+    const nombre = document.getElementById('groupName').value.trim();
+    if (!nombre) {
+      document.getElementById('groupName').style.borderColor = '#ff6b6b';
+      return;
+    }
+    if (!selectedMembers.size) {
+      showToast('Selecciona al menos un amigo', 'err'); return;
+    }
+    const btn = document.getElementById('createGroupBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span>';
+
+    try {
+      const ref = doc(collection(db, 'grupos'));
+      await setDoc(ref, {
+        nombre,
+        miembros:   [myUid, ...selectedMembers],
+        creadorId:  myUid,
+        creadoEn:   serverTimestamp(),
+      });
+      showToast(`✓ Grupo "${nombre}" creado`, 'ok');
+      closeGroupModal();
+    } catch(e) {
+      showToast('Error al crear grupo', 'err');
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = 'Crear grupo';
+    }
+  };
+
+  // ── Backdrop tap to close ────────────────────────────────
+  document.getElementById('groupModal').addEventListener('click', e => {
+    if (e.target === e.currentTarget) closeGroupModal();
+  });
+
+  // ── Toast ────────────────────────────────────────────────
+  function showToast(msg, type = 'ok') {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.className = `toast ${type} show`;
+    setTimeout(() => t.classList.remove('show'), 2400);
+  }
+</script>
+
+<script>
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/syncu/sw.js')
+      .catch(err => console.warn('SW:', err));
+  }
+</script>
+</body>
+</html>
