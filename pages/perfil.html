@@ -1,0 +1,883 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SyncU — Perfil</title>
+  <link rel="manifest" href="../manifest.json" />
+  <meta name="theme-color" content="#FF6B00" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --orange:  #FF6B00;
+      --bg:      #0D0D0D;
+      --surface: #141414;
+      --card:    #1A1A1A;
+      --card2:   #202020;
+      --text:    #FFFFFF;
+      --muted:   #666;
+      --border:  rgba(255,255,255,0.08);
+      --green:   #22C55E;
+      --red:     #EF4444;
+      --max-w:   430px;
+    }
+
+    html, body {
+      min-height: 100%; background: var(--bg);
+      color: var(--text); font-family: 'Space Grotesk', sans-serif;
+      overflow-x: hidden;
+    }
+    body::before {
+      content: ''; position: fixed; inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+      pointer-events: none; z-index: 0;
+    }
+
+    /* ── Page ── */
+    .page {
+      position: relative; z-index: 1;
+      max-width: var(--max-w); margin: 0 auto;
+      padding-bottom: 6rem;
+    }
+
+    /* ── Topbar ── */
+    .topbar {
+      position: sticky; top: 0; z-index: 50;
+      background: rgba(13,13,13,0.93);
+      backdrop-filter: blur(14px);
+      border-bottom: 1px solid var(--border);
+      padding: 1rem 1rem 0.8rem;
+      display: flex; align-items: center; gap: 0.6rem;
+    }
+    .back-btn {
+      background: none; border: none; cursor: pointer;
+      color: var(--muted); font-size: 1.1rem; padding: 0.2rem;
+      transition: color 0.15s;
+    }
+    .back-btn:hover { color: var(--text); }
+    .page-title { font-size: 1.1rem; font-weight: 700; letter-spacing: -0.3px; }
+
+    /* ── Hero ── */
+    .hero {
+      display: flex; flex-direction: column; align-items: center;
+      padding: 2rem 1rem 1.5rem; gap: 0.75rem;
+      position: relative;
+    }
+    /* Subtle radial behind avatar */
+    .hero::before {
+      content: ''; position: absolute;
+      width: 260px; height: 260px; border-radius: 50%;
+      top: 0; left: 50%; transform: translateX(-50%);
+      background: radial-gradient(circle, rgba(255,107,0,0.12) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    .avatar-wrap { position: relative; }
+    .avatar-main {
+      width: 92px; height: 92px; border-radius: 50%;
+      background: var(--orange);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 2.4rem; font-weight: 800; color: #fff;
+      border: 3px solid rgba(255,107,0,0.4);
+      box-shadow: 0 0 0 6px rgba(255,107,0,0.1), 0 0 30px rgba(255,107,0,0.3);
+      animation: avatarPop 0.5s cubic-bezier(0.34,1.56,0.64,1) both;
+    }
+    @keyframes avatarPop {
+      from { transform: scale(0.7); opacity: 0; }
+      to   { transform: scale(1);   opacity: 1; }
+    }
+    .status-badge {
+      position: absolute; bottom: 2px; right: -2px;
+      background: var(--card2); border: 2px solid var(--bg);
+      border-radius: 99px; padding: 0.18rem 0.55rem;
+      font-size: 0.65rem; font-weight: 700; letter-spacing: 0.04em;
+      white-space: nowrap;
+    }
+    .status-badge.libre  { color: var(--green); }
+    .status-badge.clase  { color: var(--muted); }
+
+    .hero-name {
+      font-size: 1.5rem; font-weight: 800; letter-spacing: -0.5px;
+      text-align: center; line-height: 1.15;
+    }
+    .hero-meta {
+      font-size: 0.8rem; color: var(--muted); text-align: center;
+    }
+
+    /* ── Section label ── */
+    .section-label {
+      font-size: 0.66rem; font-weight: 700; letter-spacing: 0.1em;
+      text-transform: uppercase; color: var(--orange);
+      padding: 1rem 1rem 0.6rem;
+      display: flex; align-items: center; gap: 0.5rem;
+    }
+    .section-label::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+    /* ── Streak card ── */
+    .streak-card {
+      margin: 0 1rem;
+      background: linear-gradient(135deg, #1f1200, #1a1a1a);
+      border: 1px solid rgba(255,107,0,0.25);
+      border-radius: 18px; padding: 1.4rem 1.25rem;
+      animation: fadeSlide 0.4s ease;
+    }
+    @keyframes fadeSlide {
+      from { opacity:0; transform: translateY(10px); }
+      to   { opacity:1; transform: none; }
+    }
+    .streak-top {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 1rem;
+    }
+    .streak-count {
+      font-size: 3rem; font-weight: 800; line-height: 1;
+      color: var(--orange);
+      text-shadow: 0 0 30px rgba(255,107,0,0.5);
+    }
+    .streak-fire { font-size: 2.2rem; animation: fireWiggle 1.8s ease-in-out infinite; }
+    @keyframes fireWiggle {
+      0%,100% { transform: rotate(-6deg) scale(1); }
+      50%      { transform: rotate(6deg) scale(1.1); }
+    }
+    .streak-label {
+      font-size: 0.95rem; font-weight: 700; color: var(--text);
+    }
+    .streak-sub {
+      font-size: 0.75rem; color: var(--muted); margin-top: 0.2rem;
+    }
+
+    /* Progress bar */
+    .streak-progress-wrap {
+      display: flex; flex-direction: column; gap: 0.45rem;
+    }
+    .streak-progress-meta {
+      display: flex; justify-content: space-between;
+      font-size: 0.7rem; color: var(--muted);
+    }
+    .streak-progress-meta span { color: var(--orange); font-weight: 700; }
+    .progress-track {
+      height: 6px; background: rgba(255,255,255,0.06);
+      border-radius: 99px; overflow: hidden;
+    }
+    .progress-fill {
+      height: 100%; border-radius: 99px;
+      background: linear-gradient(90deg, #ff6b00, #ffaa55);
+      transition: width 0.8s cubic-bezier(0.22,1,0.36,1);
+      box-shadow: 0 0 8px rgba(255,107,0,0.6);
+    }
+    .milestones {
+      display: flex; justify-content: space-between;
+    }
+    .milestone {
+      display: flex; flex-direction: column; align-items: center; gap: 0.2rem;
+    }
+    .milestone-dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: #333; transition: background 0.4s;
+    }
+    .milestone-dot.reached { background: var(--orange); box-shadow: 0 0 6px rgba(255,107,0,0.6); }
+    .milestone-label { font-size: 0.62rem; color: var(--muted); }
+
+    /* ── Stats ── */
+    .stats-grid {
+      display: grid; grid-template-columns: repeat(3, 1fr);
+      gap: 0.6rem; padding: 0 1rem;
+    }
+    .stat-card {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 14px; padding: 1rem 0.75rem;
+      display: flex; flex-direction: column; align-items: center;
+      gap: 0.25rem; text-align: center;
+      animation: fadeSlide 0.45s ease;
+    }
+    .stat-icon { font-size: 1.3rem; }
+    .stat-value {
+      font-size: 1.6rem; font-weight: 800; color: var(--orange);
+      line-height: 1;
+    }
+    .stat-label {
+      font-size: 0.62rem; font-weight: 600; color: var(--muted);
+      text-transform: uppercase; letter-spacing: 0.06em;
+      line-height: 1.2;
+    }
+
+    /* ── Config section ── */
+    .config-list {
+      padding: 0 1rem; display: flex; flex-direction: column; gap: 0.55rem;
+    }
+    .config-row {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 14px; padding: 0.9rem 1rem;
+      display: flex; align-items: center; gap: 0.85rem;
+    }
+    .config-icon { font-size: 1.1rem; flex-shrink: 0; }
+    .config-info { flex: 1; min-width: 0; }
+    .config-title { font-size: 0.88rem; font-weight: 700; }
+    .config-sub   { font-size: 0.72rem; color: var(--muted); margin-top: 0.1rem; }
+
+    /* Edit button */
+    .edit-btn {
+      background: var(--card2); border: 1px solid var(--border);
+      border-radius: 8px; padding: 0.35rem 0.75rem;
+      color: var(--muted); font-family: 'Space Grotesk', sans-serif;
+      font-size: 0.75rem; font-weight: 600; cursor: pointer;
+      transition: border-color 0.15s, color 0.15s;
+      flex-shrink: 0;
+    }
+    .edit-btn:hover { border-color: var(--orange); color: var(--orange); }
+
+    /* Toggle switch */
+    .toggle-wrap { flex-shrink: 0; }
+    .toggle {
+      position: relative; width: 42px; height: 24px; cursor: pointer;
+    }
+    .toggle input { opacity: 0; width: 0; height: 0; position: absolute; }
+    .toggle-track {
+      position: absolute; inset: 0; border-radius: 99px;
+      background: #333; transition: background 0.25s;
+    }
+    .toggle input:checked + .toggle-track { background: var(--orange); }
+    .toggle-thumb {
+      position: absolute; top: 3px; left: 3px;
+      width: 18px; height: 18px; border-radius: 50%;
+      background: #fff; transition: transform 0.25s;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.4);
+    }
+    .toggle input:checked ~ .toggle-thumb { transform: translateX(18px); }
+
+    /* Sign out button */
+    .signout-btn {
+      margin: 0 1rem;
+      width: calc(100% - 2rem);
+      padding: 0.9rem;
+      background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.25);
+      border-radius: 12px; color: var(--red);
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 0.92rem; font-weight: 700; cursor: pointer;
+      transition: background 0.2s, box-shadow 0.2s;
+      display: flex; align-items: center; justify-content: center; gap: 0.5rem;
+    }
+    .signout-btn:hover {
+      background: rgba(239,68,68,0.18);
+      box-shadow: 0 0 20px rgba(239,68,68,0.2);
+    }
+    .signout-btn:active { transform: scale(0.98); }
+
+    /* ── Edit modal ── */
+    .modal-backdrop {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.8);
+      backdrop-filter: blur(5px); z-index: 100;
+      display: flex; align-items: flex-end; justify-content: center;
+      opacity: 0; pointer-events: none; transition: opacity 0.25s;
+    }
+    .modal-backdrop.open { opacity: 1; pointer-events: all; }
+    .modal {
+      width: 100%; max-width: var(--max-w);
+      background: #181818; border: 1px solid var(--border);
+      border-bottom: none; border-radius: 20px 20px 0 0;
+      padding: 1.25rem 1.25rem 2.5rem;
+      transform: translateY(100%);
+      transition: transform 0.35s cubic-bezier(0.22,1,0.36,1);
+    }
+    .modal-backdrop.open .modal { transform: translateY(0); }
+    .modal-handle {
+      width: 36px; height: 4px; background: #333;
+      border-radius: 99px; margin: 0 auto 1.1rem;
+    }
+    .modal-title {
+      font-size: 0.7rem; font-weight: 700; letter-spacing: 0.1em;
+      text-transform: uppercase; color: var(--muted); margin-bottom: 1rem;
+    }
+    .modal label {
+      display: block; font-size: 0.7rem; font-weight: 600;
+      letter-spacing: 0.07em; text-transform: uppercase;
+      color: var(--muted); margin-bottom: 0.4rem;
+    }
+    .modal select, .modal input[type="number"] {
+      width: 100%; appearance: none;
+      background: #222; border: 1px solid #333; border-radius: 10px;
+      padding: 0.78rem 1rem; color: var(--text);
+      font-family: 'Space Grotesk', sans-serif; font-size: 0.9rem;
+      outline: none; margin-bottom: 1rem;
+      transition: border-color 0.2s;
+    }
+    .modal select:focus, .modal input:focus {
+      border-color: var(--orange);
+      box-shadow: 0 0 0 3px rgba(255,107,0,0.15);
+    }
+    .modal select option { background: #1c1c1c; }
+    .modal-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
+    .btn-cancel {
+      padding: 0.85rem; background: #222; border: 1px solid #333;
+      border-radius: 10px; color: var(--muted);
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 0.9rem; font-weight: 600; cursor: pointer;
+    }
+    .btn-cancel:hover { background: #2a2a2a; }
+    .btn-save {
+      padding: 0.85rem; background: var(--orange); border: none;
+      border-radius: 10px; color: #fff;
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 0.9rem; font-weight: 700; cursor: pointer;
+      transition: background 0.2s, box-shadow 0.2s;
+    }
+    .btn-save:hover { background: #ff7b1a; box-shadow: 0 0 16px rgba(255,107,0,0.4); }
+    .btn-save:disabled { opacity: .5; cursor: not-allowed; }
+
+    /* ── Bottom nav ── */
+    .nav-outer {
+      position: fixed; bottom: 0; left: 0; right: 0; z-index: 60;
+      background: rgba(13,13,13,0.96);
+      backdrop-filter: blur(16px);
+      border-top: 1px solid var(--border);
+    }
+    .nav-inner {
+      max-width: var(--max-w); margin: 0 auto;
+      display: flex; align-items: flex-end; justify-content: space-around;
+      padding: 0.5rem 0.25rem 1rem;
+    }
+    .nav-item {
+      display: flex; flex-direction: column; align-items: center;
+      gap: 0.2rem; text-decoration: none; color: var(--muted);
+      font-size: 0.6rem; font-weight: 600; letter-spacing: 0.04em;
+      text-transform: uppercase; padding: 0.2rem 0.5rem;
+      background: none; border: none; font-family: 'Space Grotesk', sans-serif;
+      cursor: pointer; transition: color 0.15s;
+    }
+    .nav-item.active { color: var(--orange); }
+    .nav-icon { font-size: 1.25rem; line-height: 1; }
+    .nav-center {
+      display: flex; flex-direction: column; align-items: center;
+      gap: 0.2rem; margin-top: -1.4rem; text-decoration: none;
+      background: none; border: none; cursor: pointer;
+      font-family: 'Space Grotesk', sans-serif;
+    }
+    .nav-center-btn {
+      width: 52px; height: 52px; border-radius: 50%;
+      background: var(--orange); border: 3px solid var(--bg);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.3rem; box-shadow: 0 0 20px rgba(255,107,0,0.5);
+      transition: transform 0.15s;
+    }
+    .nav-center-btn:hover { transform: scale(1.08); }
+    .nav-center-label {
+      font-size: 0.58rem; font-weight: 600; letter-spacing: 0.04em;
+      text-transform: uppercase; color: var(--orange);
+    }
+
+    /* ── Gates ── */
+    .gate { text-align: center; padding: 4rem 2rem; color: var(--muted); }
+    .gate a { color: var(--orange); }
+    .skel {
+      height: 60px; border-radius: 14px; margin: 0 1rem 0.6rem;
+      background: linear-gradient(90deg,#1a1a1a 25%,#222 50%,#1a1a1a 75%);
+      background-size: 200% 100%; animation: shimmer 1.4s infinite;
+    }
+    @keyframes shimmer { 0%{background-position:200% 0}100%{background-position:-200% 0} }
+
+    /* ── Toast ── */
+    .toast {
+      position: fixed; bottom: 5.5rem; left: 50%;
+      transform: translateX(-50%) translateY(16px);
+      background: #1e1e1e; border: 1px solid var(--border);
+      color: var(--text); font-size: 0.82rem; font-weight: 500;
+      padding: 0.55rem 1.1rem; border-radius: 99px;
+      opacity: 0; pointer-events: none;
+      transition: opacity 0.25s, transform 0.25s; z-index: 300;
+    }
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+    .toast.ok   { border-color: var(--green); color: var(--green); }
+    .toast.err  { border-color: #ff6b6b; color: #ff6b6b; }
+
+    /* ── Spinner ── */
+    .spinner {
+      display: inline-block; width: 14px; height: 14px;
+      border: 2px solid rgba(255,255,255,0.25);
+      border-top-color: #fff; border-radius: 50%;
+      animation: spin 0.7s linear infinite; vertical-align: middle;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .bottom-safe { height: 1rem; }
+  </style>
+</head>
+<body>
+
+<div class="toast" id="toast"></div>
+
+<!-- Edit modal -->
+<div class="modal-backdrop" id="editModal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">Editar perfil académico</div>
+
+    <label for="editCarrera">Carrera</label>
+    <select id="editCarrera">
+      <optgroup label="Ingeniería">
+        <option>Ingeniería de Sistemas y Computación</option>
+        <option>Ingeniería Civil</option>
+        <option>Ingeniería Industrial</option>
+        <option>Ingeniería Eléctrica y Electrónica</option>
+        <option>Ingeniería Mecánica</option>
+        <option>Ingeniería Química</option>
+        <option>Ingeniería Biomédica</option>
+      </optgroup>
+      <optgroup label="Ciencias">
+        <option>Matemáticas</option><option>Física</option>
+        <option>Biología</option><option>Química</option><option>Estadística</option>
+      </optgroup>
+      <optgroup label="Ciencias Sociales">
+        <option>Economía</option><option>Derecho</option><option>Psicología</option>
+        <option>Historia</option><option>Filosofía</option><option>Sociología</option>
+        <option>Antropología</option>
+      </optgroup>
+      <optgroup label="Artes y Humanidades">
+        <option>Literatura</option><option>Música</option>
+        <option>Arte</option><option>Diseño</option><option>Arquitectura</option>
+      </optgroup>
+      <optgroup label="Administración">
+        <option>Administración de Empresas</option>
+        <option>Contaduría Pública</option><option>Negocios Internacionales</option>
+      </optgroup>
+      <optgroup label="Medicina y Salud">
+        <option>Medicina</option><option>Enfermería</option>
+        <option>Nutrición y Dietética</option>
+      </optgroup>
+      <option value="otro">Otra carrera</option>
+    </select>
+
+    <label for="editSemestre">Semestre actual</label>
+    <input type="number" id="editSemestre" min="1" max="12" placeholder="Ej: 4" />
+
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeEditModal()">Cancelar</button>
+      <button class="btn-save" id="saveEditBtn" onclick="saveEdit()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Auth gate -->
+<div id="authGate" class="gate" style="display:none">
+  Debes <a href="../index.html">iniciar sesión</a> para ver tu perfil.
+</div>
+
+<!-- Loading -->
+<div id="loadingGate">
+  <div style="height:60px"></div>
+  <div style="text-align:center;padding:3rem">
+    <div style="width:44px;height:44px;border-radius:50%;border:3px solid rgba(255,107,0,0.2);border-top-color:#FF6B00;animation:spin2 0.9s linear infinite;margin:0 auto"></div>
+    <style>@keyframes spin2{to{transform:rotate(360deg)}}</style>
+  </div>
+  <div class="skel"></div><div class="skel"></div>
+</div>
+
+<!-- Main page -->
+<div class="page" id="mainPage" style="display:none">
+
+  <!-- Topbar -->
+  <div class="topbar">
+    <button class="back-btn" onclick="history.back()">←</button>
+    <span class="page-title">👤 Perfil</span>
+  </div>
+
+  <!-- Hero -->
+  <div class="hero">
+    <div class="avatar-wrap">
+      <div class="avatar-main" id="heroAvatar"></div>
+      <div class="status-badge" id="statusBadge"></div>
+    </div>
+    <div class="hero-name"  id="heroName"></div>
+    <div class="hero-meta"  id="heroMeta"></div>
+  </div>
+
+  <!-- Racha -->
+  <div class="section-label">Racha diaria</div>
+  <div class="streak-card" id="streakCard">
+    <div class="streak-top">
+      <div>
+        <div class="streak-count" id="streakCount">0</div>
+        <div class="streak-label" id="streakLabel">días seguidos</div>
+        <div class="streak-sub">Usando SyncU consecutivamente</div>
+      </div>
+      <div class="streak-fire" id="streakFire">🔥</div>
+    </div>
+    <div class="streak-progress-wrap">
+      <div class="streak-progress-meta">
+        <span id="progressLabel">Siguiente hito</span>
+        <span id="progressTarget"></span>
+      </div>
+      <div class="progress-track">
+        <div class="progress-fill" id="progressFill" style="width:0%"></div>
+      </div>
+      <div class="milestones">
+        <div class="milestone">
+          <div class="milestone-dot" id="m7"></div>
+          <div class="milestone-label">7 🏅</div>
+        </div>
+        <div class="milestone">
+          <div class="milestone-dot" id="m30"></div>
+          <div class="milestone-label">30 🏆</div>
+        </div>
+        <div class="milestone">
+          <div class="milestone-dot" id="m100"></div>
+          <div class="milestone-label">100 💎</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Stats -->
+  <div class="section-label">Estadísticas</div>
+  <div class="stats-grid">
+    <div class="stat-card">
+      <div class="stat-icon">⚡</div>
+      <div class="stat-value" id="statComparaciones">—</div>
+      <div class="stat-label">Comparaciones</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon">✅</div>
+      <div class="stat-value" id="statLibre">—</div>
+      <div class="stat-label">Veces libre</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon">👥</div>
+      <div class="stat-value" id="statAmigos">—</div>
+      <div class="stat-label">Amigos</div>
+    </div>
+  </div>
+
+  <!-- Config -->
+  <div class="section-label">Configuración</div>
+  <div class="config-list">
+
+    <!-- Edit academic info -->
+    <div class="config-row">
+      <div class="config-icon">🎓</div>
+      <div class="config-info">
+        <div class="config-title">Carrera y semestre</div>
+        <div class="config-sub" id="configAcad">—</div>
+      </div>
+      <button class="edit-btn" onclick="openEditModal()">Editar</button>
+    </div>
+
+    <!-- Notifications toggle -->
+    <div class="config-row">
+      <div class="config-icon">🔔</div>
+      <div class="config-info">
+        <div class="config-title">Notificaciones</div>
+        <div class="config-sub">Avisos cuando un amigo está libre</div>
+      </div>
+      <div class="toggle-wrap">
+        <label class="toggle">
+          <input type="checkbox" id="notifToggle" onchange="handleNotifToggle(this)" />
+          <div class="toggle-track"></div>
+          <div class="toggle-thumb"></div>
+        </label>
+      </div>
+    </div>
+
+    <!-- App version -->
+    <div class="config-row">
+      <div class="config-icon">📱</div>
+      <div class="config-info">
+        <div class="config-title">SyncU PWA</div>
+        <div class="config-sub">Versión 1.0 · Uniandes 2025</div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Sign out -->
+  <div class="section-label">Sesión</div>
+  <button class="signout-btn" id="signoutBtn" onclick="handleSignOut()">
+    🚪 Cerrar sesión
+  </button>
+
+  <div class="bottom-safe"></div>
+</div>
+
+<!-- Bottom nav -->
+<div class="nav-outer" id="bottomNav" style="display:none">
+  <div class="nav-inner">
+    <a class="nav-item" href="home.html">
+      <span class="nav-icon">🏠</span>Inicio
+    </a>
+    <a class="nav-item" href="mi-horario.html">
+      <span class="nav-icon">📅</span>Horario
+    </a>
+    <a class="nav-center" href="home.html">
+      <div class="nav-center-btn">⚡</div>
+      <span class="nav-center-label">Libre</span>
+    </a>
+    <a class="nav-item" href="amigos.html">
+      <span class="nav-icon">👥</span>Amigos
+    </a>
+    <button class="nav-item active">
+      <span class="nav-icon">👤</span>Perfil
+    </button>
+  </div>
+</div>
+
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+  import { getAuth, onAuthStateChanged, signOut }
+    from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+  import { getFirestore, doc, getDoc, updateDoc, serverTimestamp }
+    from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyDkAVe9p_toQ4CAveb7iaI0bvTsJc6gSpE",
+    authDomain: "syncu-3abec.firebaseapp.com",
+    projectId: "syncu-3abec",
+    storageBucket: "syncu-3abec.firebasestorage.app",
+    messagingSenderId: "287232013909",
+    appId: "1:287232013909:web:d05003a489fa0190e806dc"
+  };
+
+  const app  = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db   = getFirestore(app);
+
+  // ── State ────────────────────────────────────────────────
+  let myUid = null;
+  let myDoc = null;
+
+  // ── Auth ─────────────────────────────────────────────────
+  onAuthStateChanged(auth, async user => {
+    document.getElementById('loadingGate').style.display = 'none';
+    if (!user) { document.getElementById('authGate').style.display = 'block'; return; }
+    myUid = user.uid;
+
+    const snap = await getDoc(doc(db, 'usuarios', myUid));
+    myDoc = snap.exists() ? { uid: myUid, ...snap.data() }
+                          : { uid: myUid, nombre: 'Estudiante', amigos: [], disponible: false };
+
+    // Update streak before rendering
+    await updateStreak();
+
+    document.getElementById('mainPage').style.display  = 'block';
+    document.getElementById('bottomNav').style.display = 'block';
+
+    renderHero();
+    renderStreak();
+    renderStats();
+    renderConfig();
+    loadNotifPref();
+  });
+
+  // ── Streak logic ─────────────────────────────────────────
+  async function updateStreak() {
+    const today = todayISO();
+    const last  = myDoc.ultimoAcceso || null;
+    let racha   = myDoc.racha || 0;
+    let changed = false;
+
+    if (!last) {
+      // First time ever
+      racha = 1; changed = true;
+    } else {
+      const diff = daysBetween(last, today);
+      if (diff === 0) {
+        // Same day — no change
+      } else if (diff === 1) {
+        // Consecutive day
+        racha += 1; changed = true;
+      } else {
+        // Streak broken
+        racha = 1; changed = true;
+      }
+    }
+
+    if (changed) {
+      try {
+        await updateDoc(doc(db, 'usuarios', myUid), {
+          racha,
+          ultimoAcceso: today,
+        });
+        myDoc.racha = racha;
+        myDoc.ultimoAcceso = today;
+      } catch(e) {
+        console.warn('No se pudo actualizar racha:', e);
+      }
+    }
+  }
+
+  function todayISO() {
+    return new Date().toISOString().split('T')[0]; // 'YYYY-MM-DD'
+  }
+  function daysBetween(a, b) {
+    const da = new Date(a); const db2 = new Date(b);
+    return Math.round((db2 - da) / 86400000);
+  }
+
+  // ── Render hero ──────────────────────────────────────────
+  function renderHero() {
+    const nombre  = myDoc.nombre   || 'Estudiante';
+    const carrera = myDoc.carrera  || '';
+    const semestre = myDoc.semestre;
+    const libre   = myDoc.disponible;
+
+    // Avatar
+    const av = document.getElementById('heroAvatar');
+    av.textContent = nombre.charAt(0).toUpperCase();
+
+    // Status badge
+    const badge = document.getElementById('statusBadge');
+    if (libre) {
+      badge.textContent = 'Disponible ⚡';
+      badge.className = 'status-badge libre';
+    } else {
+      badge.textContent = 'En clase 📚';
+      badge.className = 'status-badge clase';
+    }
+
+    document.getElementById('heroName').textContent = nombre;
+    document.getElementById('heroMeta').textContent =
+      [carrera, semestre ? `Semestre ${semestre}` : ''].filter(Boolean).join(' · ');
+  }
+
+  // ── Render streak ────────────────────────────────────────
+  function renderStreak() {
+    const racha = myDoc.racha || 0;
+
+    // Count display
+    document.getElementById('streakCount').textContent = racha;
+    document.getElementById('streakLabel').textContent =
+      racha === 1 ? 'día seguido' : 'días seguidos';
+
+    // Fire emoji intensity
+    const fire = document.getElementById('streakFire');
+    fire.textContent = racha >= 30 ? '🔥🔥' : racha >= 7 ? '🔥' : '💧';
+
+    // Progress toward next milestone
+    const MILESTONES = [7, 30, 100];
+    const next = MILESTONES.find(m => racha < m) || 100;
+    const prev = MILESTONES[MILESTONES.indexOf(next) - 1] || 0;
+    const pct  = next === prev ? 100
+               : Math.min(100, Math.round(((racha - prev) / (next - prev)) * 100));
+
+    document.getElementById('progressLabel').textContent =
+      racha >= 100 ? '¡Leyenda total! 💎' : `Próximo hito: ${next} días`;
+    document.getElementById('progressTarget').textContent =
+      racha >= 100 ? '' : `${racha}/${next}`;
+    document.getElementById('progressFill').style.width = `${pct}%`;
+
+    // Milestone dots
+    ['m7','m30','m100'].forEach((id, i) => {
+      const el = document.getElementById(id);
+      el.classList.toggle('reached', racha >= MILESTONES[i]);
+    });
+  }
+
+  // ── Render stats ─────────────────────────────────────────
+  function renderStats() {
+    document.getElementById('statComparaciones').textContent = myDoc.comparaciones ?? 0;
+    document.getElementById('statLibre').textContent         = myDoc.vecesLibre    ?? 0;
+    document.getElementById('statAmigos').textContent        = (myDoc.amigos || []).length;
+  }
+
+  // ── Render config ────────────────────────────────────────
+  function renderConfig() {
+    const carrera  = myDoc.carrera  || 'Sin definir';
+    const semestre = myDoc.semestre || '—';
+    document.getElementById('configAcad').textContent =
+      `${carrera.split(' ').slice(0,3).join(' ')}… · Sem ${semestre}`;
+  }
+
+  // ── Edit modal ───────────────────────────────────────────
+  window.openEditModal = function() {
+    // Pre-fill
+    const sel = document.getElementById('editCarrera');
+    const num = document.getElementById('editSemestre');
+    // Try to match carrera
+    for (let opt of sel.options) {
+      if (opt.value === myDoc.carrera || opt.text === myDoc.carrera) {
+        sel.value = opt.value; break;
+      }
+    }
+    num.value = myDoc.semestre || '';
+    document.getElementById('editModal').classList.add('open');
+  };
+  window.closeEditModal = function() {
+    document.getElementById('editModal').classList.remove('open');
+  };
+
+  window.saveEdit = async function() {
+    const carrera  = document.getElementById('editCarrera');
+    const semestre = parseInt(document.getElementById('editSemestre').value);
+    const btn = document.getElementById('saveEditBtn');
+
+    const carreraVal = carrera.options[carrera.selectedIndex].text;
+    if (!carreraVal || !semestre || semestre < 1 || semestre > 12) {
+      showToast('Completa los campos correctamente', 'err'); return;
+    }
+
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span>';
+    try {
+      await updateDoc(doc(db, 'usuarios', myUid), { carrera: carreraVal, semestre });
+      myDoc.carrera  = carreraVal;
+      myDoc.semestre = semestre;
+      renderHero();
+      renderConfig();
+      closeEditModal();
+      showToast('✓ Perfil actualizado', 'ok');
+    } catch(e) {
+      showToast('Error al guardar', 'err');
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = 'Guardar';
+    }
+  };
+
+  document.getElementById('editModal').addEventListener('click', e => {
+    if (e.target === e.currentTarget) closeEditModal();
+  });
+
+  // ── Notifications ─────────────────────────────────────────
+  function loadNotifPref() {
+    const pref = localStorage.getItem('syncu_notif') !== 'false';
+    document.getElementById('notifToggle').checked = pref;
+  }
+  window.handleNotifToggle = function(el) {
+    localStorage.setItem('syncu_notif', el.checked ? 'true' : 'false');
+    showToast(el.checked ? '🔔 Notificaciones activadas' : '🔕 Notificaciones desactivadas');
+  };
+
+  // ── Sign out ─────────────────────────────────────────────
+  window.handleSignOut = async function() {
+    const btn = document.getElementById('signoutBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span> Saliendo…';
+    try {
+      await signOut(auth);
+      window.location.href = '../index.html';
+    } catch(e) {
+      showToast('Error al cerrar sesión', 'err');
+      btn.disabled = false;
+      btn.innerHTML = '🚪 Cerrar sesión';
+    }
+  };
+
+  // ── Toast ─────────────────────────────────────────────────
+  function showToast(msg, type = '') {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.className = `toast ${type} show`;
+    setTimeout(() => t.classList.remove('show'), 2400);
+  }
+</script>
+
+<script>
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/syncu/sw.js')
+      .catch(err => console.warn('SW:', err));
+  }
+</script>
+</body>
+</html>
