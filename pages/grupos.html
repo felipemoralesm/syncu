@@ -1,0 +1,793 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SyncU — Mis Grupos</title>
+  <link rel="manifest" href="../manifest.json" />
+  <meta name="theme-color" content="#FF6B00" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --orange:  #FF6B00;
+      --bg:      #0D0D0D;
+      --surface: #141414;
+      --card:    #1A1A1A;
+      --card2:   #202020;
+      --text:    #FFFFFF;
+      --muted:   #666;
+      --border:  rgba(255,255,255,0.08);
+      --green:   #22C55E;
+      --max-w:   430px;
+    }
+
+    html, body {
+      min-height: 100%; background: var(--bg);
+      color: var(--text); font-family: 'Space Grotesk', sans-serif;
+      overflow-x: hidden;
+    }
+    body::before {
+      content: ''; position: fixed; inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+      pointer-events: none; z-index: 0;
+    }
+
+    /* ── Page ── */
+    .page {
+      position: relative; z-index: 1;
+      max-width: var(--max-w); margin: 0 auto;
+      padding-bottom: 6rem;
+    }
+
+    /* ── Topbar ── */
+    .topbar {
+      position: sticky; top: 0; z-index: 50;
+      background: rgba(13,13,13,0.93);
+      backdrop-filter: blur(14px);
+      border-bottom: 1px solid var(--border);
+      padding: 1rem 1rem 0.8rem;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .topbar-left { display: flex; align-items: center; gap: 0.6rem; }
+    .back-btn {
+      background: none; border: none; cursor: pointer;
+      color: var(--muted); font-size: 1.1rem; padding: 0.2rem;
+      transition: color 0.15s;
+    }
+    .back-btn:hover { color: var(--text); }
+    .page-title { font-size: 1.1rem; font-weight: 700; letter-spacing: -0.3px; }
+
+    .create-btn {
+      display: flex; align-items: center; gap: 0.35rem;
+      background: var(--orange); color: #fff; border: none;
+      border-radius: 9px; padding: 0.45rem 0.9rem;
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 0.8rem; font-weight: 700; cursor: pointer;
+      transition: background 0.2s, box-shadow 0.2s, transform 0.15s;
+    }
+    .create-btn:hover {
+      background: #ff7b1a;
+      box-shadow: 0 0 16px rgba(255,107,0,0.45);
+      transform: translateY(-1px);
+    }
+    .create-btn:active { transform: scale(0.97); }
+
+    /* ── Section label ── */
+    .section-label {
+      font-size: 0.66rem; font-weight: 700; letter-spacing: 0.1em;
+      text-transform: uppercase; color: var(--orange);
+      padding: 1rem 1rem 0.65rem;
+      display: flex; align-items: center; gap: 0.5rem;
+    }
+    .section-label::after { content:''; flex:1; height:1px; background: var(--border); }
+
+    /* ── Groups list ── */
+    .groups-list {
+      padding: 0 1rem; display: flex; flex-direction: column; gap: 0.75rem;
+    }
+
+    /* ── Group card ── */
+    .group-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 1.1rem 1rem;
+      transition: border-color 0.2s, transform 0.15s;
+      animation: fadeSlide 0.35s ease;
+    }
+    .group-card:hover { border-color: rgba(255,107,0,0.22); transform: translateY(-1px); }
+    @keyframes fadeSlide {
+      from { opacity:0; transform: translateY(10px); }
+      to   { opacity:1; transform: none; }
+    }
+
+    /* Card top row */
+    .card-top {
+      display: flex; align-items: flex-start;
+      justify-content: space-between; gap: 0.75rem;
+      margin-bottom: 0.85rem;
+    }
+    .card-info { flex: 1; min-width: 0; }
+    .card-name {
+      font-size: 1rem; font-weight: 800; letter-spacing: -0.2px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .card-meta {
+      font-size: 0.72rem; color: var(--muted); margin-top: 0.25rem;
+      display: flex; align-items: center; gap: 0.55rem; flex-wrap: wrap;
+    }
+    .meta-pill {
+      display: flex; align-items: center; gap: 0.3rem;
+      background: var(--card2); border: 1px solid var(--border);
+      border-radius: 99px; padding: 0.18rem 0.55rem;
+      font-size: 0.67rem; font-weight: 600;
+    }
+    .meta-pill.libres { border-color: rgba(34,197,94,0.25); color: var(--green); }
+    .meta-pill.libres .pill-dot { background: var(--green); }
+    .meta-pill .pill-dot {
+      width: 6px; height: 6px; border-radius: 50%; background: var(--muted);
+    }
+
+    /* Avatar stack */
+    .avatar-stack {
+      display: flex; flex-direction: row-reverse; align-items: center;
+    }
+    .stack-av {
+      width: 32px; height: 32px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.75rem; font-weight: 800; color: #fff;
+      border: 2px solid var(--card);
+      margin-left: -10px; flex-shrink: 0;
+      transition: transform 0.15s;
+    }
+    .stack-av:last-child { margin-left: 0; }
+    .stack-av:hover { transform: translateY(-3px); z-index: 1; }
+    .stack-more {
+      background: var(--card2); border: 2px solid var(--border);
+      color: var(--muted); font-size: 0.65rem; font-weight: 700;
+    }
+
+    /* Card actions */
+    .card-actions { display: flex; gap: 0.5rem; align-items: center; }
+    .compare-btn {
+      flex: 1;
+      display: flex; align-items: center; justify-content: center; gap: 0.35rem;
+      background: rgba(255,107,0,0.1); border: 1px solid rgba(255,107,0,0.2);
+      border-radius: 10px; padding: 0.6rem 0.75rem;
+      color: var(--orange); font-family: 'Space Grotesk', sans-serif;
+      font-size: 0.78rem; font-weight: 700; cursor: pointer; text-decoration: none;
+      transition: background 0.2s, border-color 0.2s, box-shadow 0.2s;
+    }
+    .compare-btn:hover {
+      background: rgba(255,107,0,0.18);
+      border-color: rgba(255,107,0,0.4);
+      box-shadow: 0 0 12px rgba(255,107,0,0.25);
+    }
+    .delete-btn {
+      width: 36px; height: 36px; border-radius: 9px;
+      background: rgba(239,68,68,0.08); border: 1px solid rgba(239,68,68,0.15);
+      color: #ef4444; font-size: 0.9rem; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: background 0.15s;
+    }
+    .delete-btn:hover { background: rgba(239,68,68,0.18); }
+
+    /* ── Empty state ── */
+    .empty-state {
+      margin: 2rem 1rem 0;
+      background: var(--card); border: 1px dashed rgba(255,107,0,0.2);
+      border-radius: 18px; padding: 2.5rem 1.5rem;
+      text-align: center; display: flex; flex-direction: column;
+      align-items: center; gap: 0.75rem;
+    }
+    .empty-icon { font-size: 3rem; }
+    .empty-title { font-size: 1rem; font-weight: 700; }
+    .empty-sub   { font-size: 0.82rem; color: var(--muted); line-height: 1.5; }
+    .empty-cta {
+      margin-top: 0.5rem; padding: 0.75rem 1.5rem;
+      background: var(--orange); color: #fff; border: none;
+      border-radius: 10px; font-family: 'Space Grotesk', sans-serif;
+      font-size: 0.88rem; font-weight: 700; cursor: pointer;
+      transition: background 0.2s, box-shadow 0.2s;
+    }
+    .empty-cta:hover { background: #ff7b1a; box-shadow: 0 0 18px rgba(255,107,0,0.4); }
+
+    /* ── Modal backdrop ── */
+    .modal-backdrop {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.8);
+      backdrop-filter: blur(5px); z-index: 100;
+      display: flex; align-items: flex-end; justify-content: center;
+      opacity: 0; pointer-events: none; transition: opacity 0.25s;
+    }
+    .modal-backdrop.open { opacity: 1; pointer-events: all; }
+
+    /* ── Create modal ── */
+    .modal {
+      width: 100%; max-width: var(--max-w);
+      background: #181818; border: 1px solid var(--border);
+      border-bottom: none; border-radius: 20px 20px 0 0;
+      padding: 1.25rem 1.25rem 2.5rem;
+      transform: translateY(100%);
+      transition: transform 0.35s cubic-bezier(0.22,1,0.36,1);
+      max-height: 85vh; display: flex; flex-direction: column;
+    }
+    .modal-backdrop.open .modal { transform: translateY(0); }
+    .modal-handle {
+      width: 36px; height: 4px; background: #333;
+      border-radius: 99px; margin: 0 auto 1.1rem; flex-shrink: 0;
+    }
+    .modal-title {
+      font-size: 0.7rem; font-weight: 700; letter-spacing: 0.1em;
+      text-transform: uppercase; color: var(--muted);
+      margin-bottom: 1rem; flex-shrink: 0;
+    }
+    .modal label {
+      display: block; font-size: 0.7rem; font-weight: 600;
+      letter-spacing: 0.07em; text-transform: uppercase;
+      color: var(--muted); margin-bottom: 0.4rem; flex-shrink: 0;
+    }
+    .modal input[type="text"] {
+      width: 100%; background: #222; border: 1px solid #333;
+      border-radius: 10px; padding: 0.78rem 1rem; color: var(--text);
+      font-family: 'Space Grotesk', sans-serif; font-size: 0.9rem;
+      outline: none; margin-bottom: 1rem; flex-shrink: 0;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .modal input[type="text"]:focus {
+      border-color: var(--orange); box-shadow: 0 0 0 3px rgba(255,107,0,0.15);
+    }
+    .members-label { margin-bottom: 0.5rem !important; flex-shrink: 0; }
+    .member-scroll {
+      flex: 1; overflow-y: auto; display: flex;
+      flex-direction: column; gap: 0.45rem;
+      margin-bottom: 1rem; min-height: 80px;
+      scrollbar-width: thin; scrollbar-color: #2a2a2a transparent;
+    }
+    .member-row {
+      display: flex; align-items: center; gap: 0.75rem;
+      background: #222; border: 1px solid #333; border-radius: 10px;
+      padding: 0.6rem 0.9rem; cursor: pointer;
+      transition: border-color 0.2s, background 0.15s; flex-shrink: 0;
+    }
+    .member-row.selected { border-color: var(--orange); background: rgba(255,107,0,0.07); }
+    .member-check {
+      width: 18px; height: 18px; border-radius: 50%;
+      border: 2px solid #444; background: none; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.65rem; color: transparent;
+      transition: all 0.15s;
+    }
+    .member-row.selected .member-check {
+      background: var(--orange); border-color: var(--orange); color: #fff;
+    }
+    .member-mini-av {
+      width: 30px; height: 30px; border-radius: 50%; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.75rem; font-weight: 800; color: #fff;
+    }
+    .member-row-name  { font-size: 0.88rem; font-weight: 600; }
+    .member-row-meta  { font-size: 0.7rem; color: var(--muted); }
+    .no-friends-msg {
+      text-align: center; padding: 1rem; color: var(--muted); font-size: 0.82rem;
+    }
+    .modal-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; flex-shrink: 0; }
+    .btn-cancel {
+      padding: 0.85rem; background: #222; border: 1px solid #333;
+      border-radius: 10px; color: var(--muted);
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 0.9rem; font-weight: 600; cursor: pointer;
+    }
+    .btn-cancel:hover { background: #2a2a2a; }
+    .btn-create {
+      padding: 0.85rem; background: var(--orange); border: none;
+      border-radius: 10px; color: #fff;
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 0.9rem; font-weight: 700; cursor: pointer;
+      transition: background 0.2s, box-shadow 0.2s;
+    }
+    .btn-create:hover { background: #ff7b1a; box-shadow: 0 0 16px rgba(255,107,0,0.4); }
+    .btn-create:disabled { opacity: .5; cursor: not-allowed; }
+
+    /* ── Delete confirm sheet ── */
+    .confirm-sheet {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.82);
+      backdrop-filter: blur(5px); z-index: 110;
+      display: flex; align-items: flex-end; justify-content: center;
+      opacity: 0; pointer-events: none; transition: opacity 0.2s;
+    }
+    .confirm-sheet.open { opacity: 1; pointer-events: all; }
+    .confirm-panel {
+      width: 100%; max-width: var(--max-w);
+      background: #181818; border: 1px solid var(--border);
+      border-bottom: none; border-radius: 20px 20px 0 0;
+      padding: 1.25rem 1.25rem 2.5rem;
+      transform: translateY(100%);
+      transition: transform 0.3s cubic-bezier(0.22,1,0.36,1);
+    }
+    .confirm-sheet.open .confirm-panel { transform: translateY(0); }
+    .confirm-name { font-size: 1rem; font-weight: 700; margin-bottom: 0.25rem; }
+    .confirm-sub  { font-size: 0.8rem; color: var(--muted); margin-bottom: 1.4rem; }
+    .confirm-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
+    .btn-del {
+      padding: 0.85rem; background: rgba(239,68,68,0.12);
+      border: 1px solid rgba(239,68,68,0.25); border-radius: 10px;
+      color: #ef4444; font-family: 'Space Grotesk', sans-serif;
+      font-size: 0.9rem; font-weight: 700; cursor: pointer;
+      transition: background 0.15s;
+    }
+    .btn-del:hover { background: rgba(239,68,68,0.22); }
+
+    /* ── Bottom nav ── */
+    .nav-outer {
+      position: fixed; bottom: 0; left: 0; right: 0; z-index: 60;
+      background: rgba(13,13,13,0.96);
+      backdrop-filter: blur(16px);
+      border-top: 1px solid var(--border);
+    }
+    .nav-inner {
+      max-width: var(--max-w); margin: 0 auto;
+      display: flex; align-items: flex-end; justify-content: space-around;
+      padding: 0.5rem 0.25rem 1rem;
+    }
+    .nav-item {
+      display: flex; flex-direction: column; align-items: center;
+      gap: 0.2rem; text-decoration: none; color: var(--muted);
+      font-size: 0.6rem; font-weight: 600; letter-spacing: 0.04em;
+      text-transform: uppercase; padding: 0.2rem 0.5rem;
+      background: none; border: none; font-family: 'Space Grotesk', sans-serif;
+      cursor: pointer; transition: color 0.15s;
+    }
+    .nav-item.active { color: var(--orange); }
+    .nav-icon { font-size: 1.25rem; line-height: 1; }
+    .nav-center {
+      display: flex; flex-direction: column; align-items: center;
+      gap: 0.2rem; margin-top: -1.4rem; text-decoration: none;
+      background: none; border: none; cursor: pointer;
+      font-family: 'Space Grotesk', sans-serif;
+    }
+    .nav-center-btn {
+      width: 52px; height: 52px; border-radius: 50%;
+      background: var(--orange); border: 3px solid var(--bg);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.3rem; box-shadow: 0 0 20px rgba(255,107,0,0.5);
+      transition: transform 0.15s;
+    }
+    .nav-center-btn:hover { transform: scale(1.08); }
+    .nav-center-label {
+      font-size: 0.58rem; font-weight: 600; text-transform: uppercase;
+      letter-spacing: 0.04em; color: var(--orange);
+    }
+
+    /* ── Gates / skeleton ── */
+    .gate { text-align: center; padding: 4rem 2rem; color: var(--muted); }
+    .gate a { color: var(--orange); }
+    .skel {
+      height: 110px; border-radius: 16px; margin: 0 1rem 0.75rem;
+      background: linear-gradient(90deg,#1a1a1a 25%,#222 50%,#1a1a1a 75%);
+      background-size: 200% 100%; animation: shimmer 1.4s infinite;
+    }
+    @keyframes shimmer { 0%{background-position:200% 0}100%{background-position:-200% 0} }
+
+    /* ── Toast ── */
+    .toast {
+      position: fixed; bottom: 5.5rem; left: 50%;
+      transform: translateX(-50%) translateY(16px);
+      background: #1e1e1e; border: 1px solid var(--border);
+      color: var(--text); font-size: 0.82rem; font-weight: 500;
+      padding: 0.55rem 1.1rem; border-radius: 99px;
+      opacity: 0; pointer-events: none;
+      transition: opacity 0.25s, transform 0.25s; z-index: 300;
+    }
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+    .toast.ok  { border-color: var(--green); color: var(--green); }
+    .toast.err { border-color: #ff6b6b; color: #ff6b6b; }
+
+    /* ── Spinner ── */
+    .spinner {
+      display: inline-block; width: 14px; height: 14px;
+      border: 2px solid rgba(255,255,255,0.25);
+      border-top-color: #fff; border-radius: 50%;
+      animation: spin 0.7s linear infinite; vertical-align: middle;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+
+<div class="toast" id="toast"></div>
+
+<!-- ── Create group modal ── -->
+<div class="modal-backdrop" id="createModal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">Nuevo grupo</div>
+
+    <label for="groupNameInput">Nombre del grupo</label>
+    <input type="text" id="groupNameInput"
+           placeholder="Ej: Parcial Cálculo, Lab Física…" maxlength="40" />
+
+    <label class="members-label">Seleccionar miembros</label>
+    <div class="member-scroll" id="memberScroll"></div>
+
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeCreateModal()">Cancelar</button>
+      <button class="btn-create" id="createBtn" onclick="createGroup()">Crear grupo</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Delete confirm sheet ── -->
+<div class="confirm-sheet" id="confirmSheet">
+  <div class="confirm-panel">
+    <div class="modal-handle"></div>
+    <div class="modal-title">Eliminar grupo</div>
+    <div class="confirm-name" id="confirmName"></div>
+    <div class="confirm-sub"  id="confirmSub"></div>
+    <div class="confirm-actions">
+      <button class="btn-cancel" onclick="closeConfirm()">Cancelar</button>
+      <button class="btn-del"    onclick="confirmDelete()">🗑 Eliminar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Auth gate -->
+<div id="authGate" class="gate" style="display:none">
+  Debes <a href="../index.html">iniciar sesión</a> para ver tus grupos.
+</div>
+
+<!-- Loading -->
+<div id="loadingGate">
+  <div style="height:60px"></div>
+  <div class="skel"></div><div class="skel"></div>
+</div>
+
+<!-- Main page -->
+<div class="page" id="mainPage" style="display:none">
+
+  <!-- Topbar -->
+  <div class="topbar">
+    <div class="topbar-left">
+      <button class="back-btn" onclick="history.back()">←</button>
+      <span class="page-title">👥 Mis Grupos</span>
+    </div>
+    <button class="create-btn" onclick="openCreateModal()">＋ Crear grupo</button>
+  </div>
+
+  <div class="section-label" id="groupsLabel" style="display:none">
+    Grupos
+    <span id="groupCount" style="color:var(--muted);font-weight:500;font-size:.7rem;letter-spacing:0"></span>
+  </div>
+
+  <div class="groups-list" id="groupsList"></div>
+
+</div>
+
+<!-- Bottom nav -->
+<div class="nav-outer" id="bottomNav" style="display:none">
+  <div class="nav-inner">
+    <a class="nav-item" href="home.html">
+      <span class="nav-icon">🏠</span>Inicio
+    </a>
+    <a class="nav-item" href="mi-horario.html">
+      <span class="nav-icon">📅</span>Horario
+    </a>
+    <a class="nav-center" href="home.html">
+      <div class="nav-center-btn">⚡</div>
+      <span class="nav-center-label">Libre</span>
+    </a>
+    <a class="nav-item active" href="grupos.html">
+      <span class="nav-icon">👥</span>Grupos
+    </a>
+    <a class="nav-item" href="perfil.html">
+      <span class="nav-icon">👤</span>Perfil
+    </a>
+  </div>
+</div>
+
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+  import { getAuth, onAuthStateChanged }
+    from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+  import {
+    getFirestore,
+    doc, getDoc, setDoc, deleteDoc,
+    collection, query, where, getDocs,
+    serverTimestamp
+  } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyDkAVe9p_toQ4CAveb7iaI0bvTsJc6gSpE",
+    authDomain: "syncu-3abec.firebaseapp.com",
+    projectId: "syncu-3abec",
+    storageBucket: "syncu-3abec.firebasestorage.app",
+    messagingSenderId: "287232013909",
+    appId: "1:287232013909:web:d05003a489fa0190e806dc"
+  };
+
+  const app  = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db   = getFirestore(app);
+
+  // ── Color helpers ───────────────────────────────────────
+  const AV_COLORS = ['#FF6B00','#E63946','#2EC4B6','#8338EC','#3A86FF','#06D6A0','#F4A261','#E76F51'];
+  function avatarColor(uid) {
+    let h = 0;
+    for (let c of uid) h = (h * 31 + c.charCodeAt(0)) & 0xffffffff;
+    return AV_COLORS[Math.abs(h) % AV_COLORS.length];
+  }
+  function initial(name) { return (name || '?').charAt(0).toUpperCase(); }
+
+  // ── State ───────────────────────────────────────────────
+  let myUid      = null;
+  let myDoc      = null;
+  let grupos     = [];   // [{id, nombre, miembros, creadorId, creadoEn}]
+  let friendDocs = {};   // uid -> {nombre, carrera, disponible}
+  let selectedMembers = new Set();
+  let deleteTarget    = null; // grupo id to delete
+
+  // ── Auth ────────────────────────────────────────────────
+  onAuthStateChanged(auth, async user => {
+    document.getElementById('loadingGate').style.display = 'none';
+    if (!user) { document.getElementById('authGate').style.display = 'block'; return; }
+    myUid = user.uid;
+    await loadAll();
+    document.getElementById('mainPage').style.display  = 'block';
+    document.getElementById('bottomNav').style.display = 'block';
+    renderGroups();
+  });
+
+  // ── Load data ───────────────────────────────────────────
+  async function loadAll() {
+    // My doc
+    const snap = await getDoc(doc(db, 'usuarios', myUid));
+    myDoc = snap.exists() ? { uid: myUid, ...snap.data() }
+                          : { uid: myUid, amigos: [] };
+
+    // My groups (where I'm a member)
+    const gq = query(collection(db, 'grupos'), where('miembros', 'array-contains', myUid));
+    const gsnap = await getDocs(gq);
+    grupos = gsnap.docs.map(d => ({ id: d.id, ...d.data() }))
+                       .sort((a, b) => {
+                          const ta = a.creadoEn?.toMillis?.() || 0;
+                          const tb = b.creadoEn?.toMillis?.() || 0;
+                          return tb - ta;
+                       });
+
+    // Collect all unique member UIDs across all groups + my friends
+    const allUids = new Set([...(myDoc.amigos || [])]);
+    grupos.forEach(g => (g.miembros || []).forEach(u => allUids.add(u)));
+    allUids.delete(myUid);
+
+    // Fetch user docs in batches of 10
+    friendDocs = {};
+    const uidsArr = [...allUids];
+    for (let i = 0; i < uidsArr.length; i += 10) {
+      const batch = uidsArr.slice(i, i + 10);
+      const q = query(collection(db, 'usuarios'), where('__name__', 'in', batch));
+      const snaps = await getDocs(q);
+      snaps.forEach(s => { friendDocs[s.id] = { uid: s.id, ...s.data() }; });
+    }
+    // Add myself
+    friendDocs[myUid] = myDoc;
+  }
+
+  // ── Render groups ────────────────────────────────────────
+  function renderGroups() {
+    const list     = document.getElementById('groupsList');
+    const label    = document.getElementById('groupsLabel');
+    const countEl  = document.getElementById('groupCount');
+
+    list.innerHTML = '';
+
+    if (!grupos.length) {
+      label.style.display = 'none';
+      list.appendChild(buildEmptyState());
+      return;
+    }
+
+    label.style.display = '';
+    countEl.textContent = `· ${grupos.length}`;
+    grupos.forEach(g => list.appendChild(buildGroupCard(g)));
+  }
+
+  function buildEmptyState() {
+    const el = document.createElement('div');
+    el.className = 'empty-state';
+    el.innerHTML = `
+      <div class="empty-icon">🤝</div>
+      <div class="empty-title">Crea tu primer grupo de estudio</div>
+      <div class="empty-sub">Agrupa a tus amigos para comparar horarios<br>y encontrar espacios libres juntos.</div>
+      <button class="empty-cta" onclick="openCreateModal()">＋ Crear grupo</button>`;
+    return el;
+  }
+
+  function buildGroupCard(g) {
+    const miembros = g.miembros || [];
+    const libresCount = miembros.filter(uid => friendDocs[uid]?.disponible).length;
+    const isCreator = g.creadorId === myUid;
+
+    const card = document.createElement('div');
+    card.className = 'group-card';
+
+    // Avatar stack (max 4 shown, rest as +N)
+    const MAX_AV = 4;
+    const shown  = miembros.slice(0, MAX_AV);
+    const extra  = miembros.length - MAX_AV;
+    const stackHTML = `
+      <div class="avatar-stack">
+        ${extra > 0 ? `<div class="stack-av stack-more">+${extra}</div>` : ''}
+        ${[...shown].reverse().map(uid => {
+          const u = friendDocs[uid];
+          const name = uid === myUid ? 'Yo' : (u?.nombre || uid);
+          return `<div class="stack-av" style="background:${avatarColor(uid)}"
+                       title="${name}">${initial(name)}</div>`;
+        }).join('')}
+      </div>`;
+
+    card.innerHTML = `
+      <div class="card-top">
+        <div class="card-info">
+          <div class="card-name">${g.nombre}</div>
+          <div class="card-meta">
+            <div class="meta-pill">
+              <div class="pill-dot"></div>
+              ${miembros.length} ${miembros.length === 1 ? 'miembro' : 'miembros'}
+            </div>
+            ${libresCount > 0 ? `
+            <div class="meta-pill libres">
+              <div class="pill-dot"></div>
+              ${libresCount} libre${libresCount !== 1 ? 's' : ''} ahora
+            </div>` : ''}
+          </div>
+        </div>
+        ${stackHTML}
+      </div>
+      <div class="card-actions">
+        <a class="compare-btn" href="comparador.html?grupo=${g.id}">
+          ⚡ Comparar horarios
+        </a>
+        ${isCreator ? `
+        <button class="delete-btn" title="Eliminar grupo"
+          onclick="openConfirm('${g.id}','${escHtml(g.nombre)}',${miembros.length})">🗑</button>` : ''}
+      </div>`;
+    return card;
+  }
+
+  function escHtml(s) {
+    return s.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+  }
+
+  // ── Create modal ─────────────────────────────────────────
+  window.openCreateModal = function() {
+    document.getElementById('groupNameInput').value = '';
+    selectedMembers.clear();
+    renderMemberList();
+    document.getElementById('createModal').classList.add('open');
+    setTimeout(() => document.getElementById('groupNameInput').focus(), 350);
+  };
+  window.closeCreateModal = function() {
+    document.getElementById('createModal').classList.remove('open');
+  };
+
+  function renderMemberList() {
+    const scroll = document.getElementById('memberScroll');
+    const friends = Object.values(friendDocs).filter(f => f.uid !== myUid);
+
+    if (!friends.length) {
+      scroll.innerHTML = `<div class="no-friends-msg">Aún no tienes amigos.<br>Añádelos en la sección Amigos.</div>`;
+      return;
+    }
+    scroll.innerHTML = '';
+    friends.forEach(f => {
+      const row = document.createElement('div');
+      row.className = `member-row ${selectedMembers.has(f.uid) ? 'selected' : ''}`;
+      const color = avatarColor(f.uid);
+      row.innerHTML = `
+        <div class="member-check">✓</div>
+        <div class="member-mini-av" style="background:${color}">${initial(f.nombre)}</div>
+        <div>
+          <div class="member-row-name">${f.nombre}</div>
+          <div class="member-row-meta">${f.carrera?.split(' ').slice(0,3).join(' ') || ''}</div>
+        </div>`;
+      row.addEventListener('click', () => {
+        if (selectedMembers.has(f.uid)) {
+          selectedMembers.delete(f.uid);
+          row.classList.remove('selected');
+        } else {
+          selectedMembers.add(f.uid);
+          row.classList.add('selected');
+        }
+      });
+      scroll.appendChild(row);
+    });
+  }
+
+  window.createGroup = async function() {
+    const nombre = document.getElementById('groupNameInput').value.trim();
+    if (!nombre) {
+      document.getElementById('groupNameInput').style.borderColor = '#ff6b6b';
+      return;
+    }
+    if (!selectedMembers.size) { showToast('Selecciona al menos un miembro', 'err'); return; }
+
+    const btn = document.getElementById('createBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span>';
+
+    try {
+      const ref = doc(collection(db, 'grupos'));
+      const miembros = [myUid, ...selectedMembers];
+      await setDoc(ref, {
+        nombre,
+        miembros,
+        creadorId: myUid,
+        creadoEn:  serverTimestamp(),
+      });
+      // Add to local state
+      grupos.unshift({ id: ref.id, nombre, miembros, creadorId: myUid, creadoEn: { toMillis: () => Date.now() } });
+      closeCreateModal();
+      renderGroups();
+      showToast(`✓ Grupo "${nombre}" creado`, 'ok');
+    } catch(e) {
+      showToast('Error al crear grupo', 'err');
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = 'Crear grupo';
+    }
+  };
+
+  // ── Delete ───────────────────────────────────────────────
+  window.openConfirm = function(id, nombre, count) {
+    deleteTarget = id;
+    document.getElementById('confirmName').textContent = nombre;
+    document.getElementById('confirmSub').textContent =
+      `Se eliminará el grupo con ${count} miembro${count !== 1 ? 's' : ''}. No se puede deshacer.`;
+    document.getElementById('confirmSheet').classList.add('open');
+  };
+  window.closeConfirm = function() {
+    document.getElementById('confirmSheet').classList.remove('open');
+    deleteTarget = null;
+  };
+  window.confirmDelete = async function() {
+    if (!deleteTarget) return;
+    try {
+      await deleteDoc(doc(db, 'grupos', deleteTarget));
+      grupos = grupos.filter(g => g.id !== deleteTarget);
+      closeConfirm();
+      renderGroups();
+      showToast('Grupo eliminado', 'ok');
+    } catch(e) {
+      showToast('Error al eliminar', 'err');
+    }
+  };
+
+  // ── Backdrop tap to close ────────────────────────────────
+  document.getElementById('createModal').addEventListener('click', e => {
+    if (e.target === e.currentTarget) closeCreateModal();
+  });
+  document.getElementById('confirmSheet').addEventListener('click', e => {
+    if (e.target === e.currentTarget) closeConfirm();
+  });
+
+  // ── Toast ────────────────────────────────────────────────
+  function showToast(msg, type = '') {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.className = `toast ${type} show`;
+    setTimeout(() => t.classList.remove('show'), 2400);
+  }
+</script>
+
+<script>
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/syncu/sw.js')
+      .catch(err => console.warn('SW:', err));
+  }
+</script>
+</body>
+</html>
