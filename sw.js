@@ -1,170 +1,181 @@
-// ══════════════════════════════════════════════════════════════
-//  SyncU — Service Worker
-//  Estrategia: Cache-first para assets estáticos,
-//              Network-first para páginas y API calls.
-// ══════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════
+//  SyncU — Service Worker v2
+//  Cache-first para assets · Network-first para HTML
+//  + Firebase Cloud Messaging (background push)
+// ═══════════════════════════════════════════════════════════
 
-const CACHE_NAME    = 'syncu-v1';
-const OFFLINE_PAGE  = '/offline.html';
+// ── Firebase Messaging (debe ir primero) ─────────────────
+importScripts('https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js');
+importScripts('https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js');
 
-// Recursos que se cachean en la instalación (precache)
-const PRECACHE_ASSETS = [
-  '/',
-  '/index.html',
-  '/pages/registro.html',
-  '/manifest.json',
-  '/offline.html',
-  // Agrega aquí tus assets: CSS, JS, íconos, etc.
-  // '/assets/icons/icon-192.png',
-  // '/assets/icons/icon-512.png',
+firebase.initializeApp({
+  projectId:         'syncu-3abec',
+  appId:             '1:287232013909:web:d05003a489fa0190e806dc',
+  messagingSenderId: '287232013909',
+});
+
+var messaging = firebase.messaging();
+
+// ── Background push handler ───────────────────────────────
+messaging.onBackgroundMessage(function(payload) {
+  var notification = payload.notification || {};
+  var data         = payload.data         || {};
+
+  var title = notification.title || 'SyncU ⚡';
+  var body  = notification.body  || '';
+  var icon  = notification.icon  || '/syncu/assets/icons/icon-192.png';
+
+  var senderUid = data.senderUid || String(Date.now());
+
+  self.registration.showNotification(title, {
+    body:               body,
+    icon:               icon,
+    badge:              '/syncu/assets/icons/icon-72.png',
+    tag:                'syncu-libre-' + senderUid,
+    data:               data,
+    requireInteraction: false,
+    vibrate:            [100, 50, 100],
+  });
+});
+
+// ── Notification click ────────────────────────────────────
+self.addEventListener('notificationclick', function(event) {
+  event.notification.close();
+
+  var data   = event.notification.data || {};
+  var url    = data.click_action ||
+               'https://felipemoralesm.github.io/syncu/pages/comparador.html';
+
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true })
+      .then(function(list) {
+        for (var i = 0; i < list.length; i++) {
+          if (list[i].url === url && 'focus' in list[i]) {
+            return list[i].focus();
+          }
+        }
+        return clients.openWindow(url);
+      })
+  );
+});
+
+// ═══════════════════════════════════════════════════════════
+//  PWA CACHE
+// ═══════════════════════════════════════════════════════════
+var CACHE_NAME   = 'syncu-v2';
+var OFFLINE_PAGE = '/syncu/offline.html';
+
+var PRECACHE = [
+  '/syncu/',
+  '/syncu/index.html',
+  '/syncu/pages/home.html',
+  '/syncu/pages/mi-horario.html',
+  '/syncu/pages/amigos.html',
+  '/syncu/pages/grupos.html',
+  '/syncu/pages/comparador.html',
+  '/syncu/pages/perfil.html',
+  '/syncu/manifest.json',
+  '/syncu/css/estilos.css',
+  '/syncu/js/sounds.js',
 ];
 
-// ── INSTALL ──────────────────────────────────────────────────
-self.addEventListener('install', event => {
-  console.log('[SW] Instalando SyncU v1…');
+// ── INSTALL ───────────────────────────────────────────────
+self.addEventListener('install', function(event) {
   event.waitUntil(
-    caches.open(CACHE_NAME).then(cache => {
-      console.log('[SW] Pre-cacheando assets estáticos');
-      // addAll falla si algún recurso no está disponible,
-      // por eso usamos add individual con catch para no romper el install.
+    caches.open(CACHE_NAME).then(function(cache) {
       return Promise.allSettled(
-        PRECACHE_ASSETS.map(url =>
-          cache.add(url).catch(err =>
-            console.warn(`[SW] No se pudo cachear ${url}:`, err)
-          )
-        )
+        PRECACHE.map(function(url) {
+          return cache.add(url).catch(function(e) {
+            console.warn('[SW] No pre-cached:', url, e);
+          });
+        })
       );
     })
   );
-  // Activa el nuevo SW de inmediato sin esperar a que cierren las pestañas
   self.skipWaiting();
 });
 
-// ── ACTIVATE ─────────────────────────────────────────────────
-self.addEventListener('activate', event => {
-  console.log('[SW] Activando…');
+// ── ACTIVATE ──────────────────────────────────────────────
+self.addEventListener('activate', function(event) {
   event.waitUntil(
-    caches.keys().then(keys =>
-      Promise.all(
+    caches.keys().then(function(keys) {
+      return Promise.all(
         keys
-          .filter(key => key !== CACHE_NAME)
-          .map(key => {
-            console.log('[SW] Eliminando caché antigua:', key);
-            return caches.delete(key);
-          })
-      )
-    )
+          .filter(function(k) { return k !== CACHE_NAME; })
+          .map(function(k) { return caches.delete(k); })
+      );
+    })
   );
-  // Toma control de todas las páginas inmediatamente
   self.clients.claim();
 });
 
-// ── FETCH ─────────────────────────────────────────────────────
-self.addEventListener('fetch', event => {
-  const { request } = event;
-  const url = new URL(request.url);
-
-  // Ignorar peticiones no-GET y peticiones a Firebase / terceros
+// ── FETCH ─────────────────────────────────────────────────
+self.addEventListener('fetch', function(event) {
+  var request = event.request;
   if (request.method !== 'GET') return;
+
+  var url = new URL(request.url);
+
+  // Dejar pasar peticiones de Firebase / FCM sin interceptar
   if (
-    url.origin !== self.location.origin &&
-    !url.hostname.includes('fonts.googleapis.com') &&
-    !url.hostname.includes('fonts.gstatic.com')
+    url.hostname.indexOf('firebasedatabase') !== -1 ||
+    url.hostname.indexOf('fcm.googleapis')   !== -1 ||
+    (url.hostname.indexOf('firebase') !== -1 &&
+     url.pathname.indexOf('/v1/')     !== -1)
   ) return;
 
-  // Recursos estáticos (JS, CSS, fuentes, imágenes) → Cache-first
-  const isStaticAsset = /\.(js|css|png|jpg|jpeg|svg|gif|woff2?|ttf|ico)$/i.test(url.pathname);
-  if (isStaticAsset) {
+  var isStatic = /\.(js|css|png|jpg|jpeg|svg|gif|woff2?|ttf|ico)$/i.test(url.pathname);
+  var isFont   = url.hostname.indexOf('fonts.googleapis') !== -1 ||
+                 url.hostname.indexOf('fonts.gstatic')    !== -1;
+
+  if (isStatic || isFont) {
     event.respondWith(cacheFirst(request));
-    return;
+  } else {
+    event.respondWith(networkFirst(request));
   }
-
-  // Páginas HTML → Network-first con fallback a caché y offline
-  event.respondWith(networkFirst(request));
 });
 
-// ── Estrategia: Cache-first ───────────────────────────────────
-async function cacheFirst(request) {
-  const cached = await caches.match(request);
-  if (cached) return cached;
-
-  try {
-    const response = await fetch(request);
-    if (response && response.status === 200) {
-      const cache = await caches.open(CACHE_NAME);
-      cache.put(request, response.clone());
-    }
-    return response;
-  } catch {
-    return new Response('Asset no disponible offline.', { status: 503 });
-  }
-}
-
-// ── Estrategia: Network-first ─────────────────────────────────
-async function networkFirst(request) {
-  try {
-    const response = await fetch(request);
-    if (response && response.status === 200) {
-      const cache = await caches.open(CACHE_NAME);
-      cache.put(request, response.clone());
-    }
-    return response;
-  } catch {
-    const cached = await caches.match(request);
+// ── Cache-first ───────────────────────────────────────────
+function cacheFirst(req) {
+  return caches.match(req).then(function(cached) {
     if (cached) return cached;
-
-    // Si es navegación, mostrar página offline
-    if (request.mode === 'navigate') {
-      const offline = await caches.match(OFFLINE_PAGE);
-      return offline || new Response(
-        `<!DOCTYPE html>
-        <html lang="es">
-        <head>
-          <meta charset="UTF-8">
-          <title>SyncU — Sin conexión</title>
-          <style>
-            body { margin:0; background:#0D0D0D; color:#fff;
-                   font-family:'Space Grotesk',sans-serif;
-                   display:flex; align-items:center; justify-content:center;
-                   min-height:100vh; flex-direction:column; gap:1rem; }
-            h1 { color:#FF6B00; font-size:2.5rem; }
-            p  { color:#888; }
-          </style>
-        </head>
-        <body>
-          <h1>SyncU ⚡</h1>
-          <p>Sin conexión. Reconéctate para continuar.</p>
-        </body>
-        </html>`,
-        { headers: { 'Content-Type': 'text/html' } }
-      );
-    }
-
-    return new Response('Sin conexión.', { status: 503 });
-  }
+    return fetch(req).then(function(res) {
+      if (res && res.status === 200) {
+        caches.open(CACHE_NAME).then(function(c) { c.put(req, res.clone()); });
+      }
+      return res;
+    }).catch(function() {
+      return new Response('Asset offline.', { status: 503 });
+    });
+  });
 }
 
-// ── PUSH NOTIFICATIONS (preparado para futuro) ───────────────
-self.addEventListener('push', event => {
-  const data = event.data ? event.data.json() : {};
-  const title = data.title || 'SyncU ⚡';
-  const options = {
-    body:  data.body  || 'Tienes una nueva notificación.',
-    icon:  '/assets/icons/icon-192.png',
-    badge: '/assets/icons/icon-72.png',
-    data:  { url: data.url || '/' },
-    vibrate: [100, 50, 100],
-  };
-  event.waitUntil(self.registration.showNotification(title, options));
-});
-
-self.addEventListener('notificationclick', event => {
-  event.notification.close();
-  const targetUrl = event.notification.data?.url || '/';
-  event.waitUntil(
-    clients.matchAll({ type: 'window', includeUncontrolled: true }).then(list => {
-      const existing = list.find(c => c.url === targetUrl && 'focus' in c);
-      return existing ? existing.focus() : clients.openWindow(targetUrl);
-    })
-  );
-});
+// ── Network-first ─────────────────────────────────────────
+function networkFirst(req) {
+  return fetch(req).then(function(res) {
+    if (res && res.status === 200) {
+      caches.open(CACHE_NAME).then(function(c) { c.put(req, res.clone()); });
+    }
+    return res;
+  }).catch(function() {
+    return caches.match(req).then(function(cached) {
+      if (cached) return cached;
+      if (req.mode === 'navigate') {
+        return caches.match(OFFLINE_PAGE).then(function(offlinePage) {
+          return offlinePage || new Response(
+            '<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8">' +
+            '<title>SyncU offline</title>' +
+            '<style>body{margin:0;background:#0D0D0D;color:#fff;' +
+            "font-family:'Space Grotesk',sans-serif;" +
+            'display:flex;align-items:center;justify-content:center;' +
+            'min-height:100vh;flex-direction:column;gap:1rem}' +
+            'h1{color:#FF6B00;font-size:2.5rem}</style></head>' +
+            '<body><h1>SyncU ⚡</h1><p style="color:#888">Sin conexión.</p></body></html>',
+            { headers: { 'Content-Type': 'text/html' } }
+          );
+        });
+      }
+      return new Response('Sin conexión.', { status: 503 });
+    });
+  });
+}

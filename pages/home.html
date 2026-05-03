@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="../css/estilos.css" />
+
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -477,6 +477,15 @@
     doc, getDoc, updateDoc, serverTimestamp,
     collection, query, where, onSnapshot, Timestamp
   } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+  import { getMessaging, getToken, onMessage }
+    from "https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging.js";
+  import { notifyFriends } from "../js/push-notifications.js";
+  // sounds.js loaded below as classic script (exposes window.SyncUSound)
+
+  // ── VAPID public key ─────────────────────────────────────
+  // Firebase Console → Project Settings → Cloud Messaging
+  // → Web push certificates → Key pair
+  const VAPID_KEY = "BFCyFLezP7AvMlYafcuqx_d9_uPnT5WxjVMe5fnjDCn754KikyI7rApNhkDrL00gcgXBSlKL-xwKp7daQEcNz5Q";
 
   const firebaseConfig = {
     apiKey: "AIzaSyDkAVe9p_toQ4CAveb7iaI0bvTsJc6gSpE",
@@ -520,7 +529,93 @@
     renderTopbar();
     applyLibreState(myDoc.disponible || false, false);
     startFeedListener();
+    // ── Init push notifications ─────────────────────────────
+    initFCM(app, db, myUid);
   });
+
+  // ── FCM: request permission + save token ─────────────────
+  async function initFCM(firebaseApp, firestoreDb, uid) {
+    try {
+      if (!('Notification' in window)) return;
+      if (!('serviceWorker' in navigator)) return;
+
+      const permission = await Notification.requestPermission();
+      if (permission !== 'granted') {
+        console.log('[SyncU FCM] Permiso denegado');
+        return;
+      }
+
+      const messaging = getMessaging(firebaseApp);
+      const swReg     = await navigator.serviceWorker.ready;
+
+      const token = await getToken(messaging, {
+        vapidKey:                    VAPID_KEY,
+        serviceWorkerRegistration:   swReg,
+      });
+
+      if (!token) {
+        console.warn('[SyncU FCM] No se obtuvo token');
+        return;
+      }
+
+      // Guardar en Firestore /usuarios/{uid}.fcmToken
+      await updateDoc(doc(firestoreDb, 'usuarios', uid), {
+        fcmToken:      token,
+        fcmUpdatedAt:  serverTimestamp(),
+      });
+      console.log('[SyncU FCM] Token guardado:', token.slice(0, 20) + '…');
+
+      // Mostrar notificaciones en primer plano (app abierta)
+      onMessage(messaging, function(payload) {
+        const notif = payload.notification || {};
+        showInAppBanner(notif.title || 'SyncU ⚡', notif.body || '');
+      });
+
+    } catch (err) {
+      console.warn('[SyncU FCM] Error al inicializar:', err);
+    }
+  }
+
+  // Banner de notificación en primer plano
+  function showInAppBanner(title, body) {
+    const existing = document.getElementById('syncu-fcm-banner');
+    if (existing) existing.remove();
+
+    const banner = document.createElement('div');
+    banner.id = 'syncu-fcm-banner';
+    banner.style.cssText = [
+      'position:fixed', 'top:68px', 'left:50%',
+      'transform:translateX(-50%)',
+      'max-width:380px', 'width:calc(100% - 2rem)',
+      'background:#1A1A1A',
+      'border:1px solid rgba(255,107,0,0.35)',
+      'border-radius:14px', 'padding:.85rem 1rem',
+      'display:flex', 'align-items:flex-start', 'gap:.75rem',
+      'box-shadow:0 8px 32px rgba(0,0,0,0.6)',
+      'z-index:500',
+      "font-family:'Space Grotesk',sans-serif",
+      'animation:syncu-ban-in .35s cubic-bezier(.22,1,.36,1) forwards'
+    ].join(';');
+
+    if (!document.getElementById('syncu-ban-style')) {
+      const s = document.createElement('style');
+      s.id = 'syncu-ban-style';
+      s.textContent = '@keyframes syncu-ban-in{from{opacity:0;transform:translateX(-50%) translateY(-20px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}';
+      document.head.appendChild(s);
+    }
+
+    banner.innerHTML =
+      '<div style="font-size:1.4rem;line-height:1;flex-shrink:0">⚡</div>' +
+      '<div style="flex:1;min-width:0">' +
+        '<div style="font-size:.88rem;font-weight:700;color:#fff;margin-bottom:.15rem">' + title + '</div>' +
+        '<div style="font-size:.75rem;color:#9CA3AF">' + body + '</div>' +
+      '</div>' +
+      '<button onclick="this.parentElement.remove()" ' +
+        'style="background:none;border:none;color:#666;cursor:pointer;font-size:1.1rem;padding:0;line-height:1">×</button>';
+
+    document.body.appendChild(banner);
+    setTimeout(function() { if (banner.parentElement) banner.remove(); }, 5000);
+  }
 
   async function loadMyDoc() {
     const snap = await getDoc(doc(db, 'usuarios', myUid));
@@ -540,6 +635,11 @@
   // ── Toggle libre ──────────────────────────────────────────
   window.toggleLibre = async function() {
     const newState = !isLibre;
+    // Play synthesized sound (fire-and-forget)
+    try {
+      if (newState) window.SyncUSound?.playLibre();
+      else          window.SyncUSound?.playOcupado();
+    } catch(_) {}
     applyLibreState(newState, true);
 
     try {
@@ -547,6 +647,10 @@
         disponible:       newState,
         disponibleDesde:  newState ? serverTimestamp() : null,
       });
+      // Notify friends only when going libre
+      if (newState) {
+        notifyFriends(db, myUid, myDoc.nombre || 'Alguien', myDoc.amigos || []).catch(()=>{});
+      }
     } catch(e) {
       // Rollback
       applyLibreState(!newState, false);
@@ -709,6 +813,8 @@
   window.addEventListener('pagehide', () => { if (feedUnsub) feedUnsub(); });
 </script>
 
+<script src="../js/sounds.js"></script>
+<script src="../js/sounds.js"></script>
 <script>
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('/syncu/sw.js')

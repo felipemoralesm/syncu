@@ -9,822 +9,627 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="../css/estilos.css" />
+
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
     :root {
-      --orange:   #FF6B00;
-      --bg:       #0D0D0D;
-      --surface:  #141414;
-      --surface2: #1A1A1A;
-      --text:     #FFFFFF;
-      --muted:    #666;
-      --border:   rgba(255,255,255,0.10);
-      --max-w:    430px;
+      --orange: #FF6B00; --bg: #0D0D0D; --surface: #141414;
+      --card: #1A1A1A; --card2: #1e1e1e; --text: #FFFFFF;
+      --muted: #666; --border: rgba(255,255,255,0.09); --max-w: 430px;
     }
+    html, body { min-height:100%; background:var(--bg); color:var(--text);
+      font-family:'Space Grotesk',sans-serif; overflow-x:hidden; }
+    body::before { content:''; position:fixed; inset:0;
+      background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+      pointer-events:none; z-index:0; }
 
-    html, body {
-      min-height: 100%;
-      background: var(--bg);
-      color: var(--text);
-      font-family: 'Space Grotesk', sans-serif;
-      overflow-x: hidden;
-    }
+    .page { position:relative; z-index:1; max-width:var(--max-w); margin:0 auto; padding-bottom:6rem; }
 
-    /* ── Grain ── */
-    body::before {
-      content: '';
-      position: fixed; inset: 0;
-      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E");
-      pointer-events: none; z-index: 0;
-    }
+    /* ── Topbar ── */
+    .topbar { position:sticky; top:0; z-index:50; background:rgba(13,13,13,0.93);
+      backdrop-filter:blur(14px); border-bottom:1px solid var(--border);
+      padding:.9rem 1rem; display:flex; align-items:center; justify-content:space-between; }
+    .topbar-left { display:flex; align-items:center; gap:.6rem; }
+    .back-btn { background:none; border:none; cursor:pointer; color:var(--muted); font-size:1.1rem; transition:color .15s; }
+    .back-btn:hover { color:var(--text); }
+    .page-title { font-size:1.1rem; font-weight:700; letter-spacing:-.3px; }
+    .save-btn { background:var(--orange); color:#fff; border:none; border-radius:8px;
+      padding:.45rem 1rem; font-family:'Space Grotesk',sans-serif; font-size:.82rem; font-weight:700;
+      cursor:pointer; display:flex; align-items:center; gap:.4rem; transition:background .2s, box-shadow .2s, transform .15s; }
+    .save-btn:hover { background:#ff7b1a; box-shadow:0 0 18px rgba(255,107,0,.45); transform:translateY(-1px); }
+    .save-btn:disabled { opacity:.45; cursor:not-allowed; transform:none; }
 
-    /* ── Page shell ── */
-    .page {
-      position: relative; z-index: 1;
-      max-width: var(--max-w);
-      margin: 0 auto;
-      padding: 0 0 6rem;
-    }
+    /* ── Day toggles ── */
+    .day-toggles { padding:.7rem 1rem; border-bottom:1px solid var(--border);
+      display:flex; gap:.45rem; overflow-x:auto; scrollbar-width:none; }
+    .day-toggles::-webkit-scrollbar { display:none; }
+    .day-tag { flex-shrink:0; display:flex; align-items:center; gap:.3rem;
+      background:var(--card); border:1px solid var(--border); border-radius:99px;
+      padding:.3rem .75rem; font-size:.7rem; font-weight:600; cursor:pointer;
+      user-select:none; transition:border-color .2s, background .2s; }
+    .day-tag.libre { border-color:var(--orange); background:rgba(255,107,0,.08); color:var(--orange); }
+    .day-tag .dot { width:6px; height:6px; border-radius:50%; background:var(--muted); transition:background .2s; }
+    .day-tag.libre .dot { background:var(--orange); }
 
-    /* ── Top bar ── */
-    .topbar {
-      position: sticky; top: 0; z-index: 50;
-      background: rgba(13,13,13,0.92);
-      backdrop-filter: blur(12px);
-      border-bottom: 1px solid var(--border);
-      padding: 1rem 1rem 0.75rem;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
-    .topbar-left { display: flex; align-items: center; gap: 0.6rem; }
-    .back-btn {
-      background: none; border: none; cursor: pointer;
-      color: var(--muted); font-size: 1.1rem; padding: 0.2rem;
-      transition: color 0.15s;
-    }
-    .back-btn:hover { color: var(--text); }
-    .page-title {
-      font-size: 1.1rem; font-weight: 700; letter-spacing: -0.3px;
-    }
-    .save-btn {
-      background: var(--orange);
-      color: #fff;
-      border: none; border-radius: 8px;
-      padding: 0.45rem 1rem;
-      font-family: 'Space Grotesk', sans-serif;
-      font-size: 0.82rem; font-weight: 700;
-      letter-spacing: 0.03em;
-      cursor: pointer;
-      transition: background 0.2s, box-shadow 0.2s, transform 0.15s;
-      display: flex; align-items: center; gap: 0.4rem;
-    }
-    .save-btn:hover {
-      background: #ff7b1a;
-      box-shadow: 0 0 18px rgba(255,107,0,0.45);
-      transform: translateY(-1px);
-    }
-    .save-btn:active { transform: scale(0.97); }
-    .save-btn:disabled { opacity: .45; cursor: not-allowed; transform: none; }
-
-    /* ── Toast ── */
-    .toast {
-      position: fixed; bottom: 5rem; left: 50%;
-      transform: translateX(-50%) translateY(20px);
-      background: #1e1e1e; border: 1px solid var(--border);
-      color: var(--text); font-size: 0.82rem; font-weight: 500;
-      padding: 0.6rem 1.2rem; border-radius: 99px;
-      opacity: 0; pointer-events: none;
-      transition: opacity 0.25s, transform 0.25s;
-      z-index: 200; white-space: nowrap;
-    }
-    .toast.show {
-      opacity: 1;
-      transform: translateX(-50%) translateY(0);
-    }
-    .toast.ok  { border-color: #00dc82; color: #00dc82; }
-    .toast.err { border-color: #ff6b6b; color: #ff6b6b; }
-
-    /* ── Auth gate ── */
-    .auth-gate {
-      text-align: center; padding: 4rem 2rem;
-      color: var(--muted); font-size: 0.9rem;
-    }
-    .auth-gate a { color: var(--orange); }
-
-    /* ── Day toggle bar ── */
-    .day-toggles {
-      padding: 0.75rem 1rem;
-      border-bottom: 1px solid var(--border);
-      display: flex; gap: 0.5rem;
-      overflow-x: auto;
-      scrollbar-width: none;
-    }
-    .day-toggles::-webkit-scrollbar { display: none; }
-    .day-tag {
-      flex-shrink: 0;
-      display: flex; align-items: center; gap: 0.35rem;
-      background: var(--surface2);
-      border: 1px solid var(--border);
-      border-radius: 99px;
-      padding: 0.3rem 0.75rem;
-      font-size: 0.72rem; font-weight: 600;
-      cursor: pointer;
-      transition: border-color 0.2s, background 0.2s;
-      user-select: none;
-    }
-    .day-tag.libre {
-      border-color: var(--orange);
-      background: rgba(255,107,0,0.08);
-      color: var(--orange);
-    }
-    .day-tag .dot {
-      width: 6px; height: 6px;
-      border-radius: 50%;
-      background: var(--muted);
-      transition: background 0.2s;
-    }
-    .day-tag.libre .dot { background: var(--orange); }
-
-    /* ── Grid wrapper ── */
-    .grid-wrap {
-      overflow-x: auto;
-      padding: 0 0 1rem;
-      scrollbar-width: thin;
-      scrollbar-color: #2a2a2a transparent;
-    }
-
-    /* ── Schedule grid ── */
+    /* ── Grid ── */
+    .grid-scroll { overflow-x:auto; padding:0 0 1rem; scrollbar-width:thin; scrollbar-color:#2a2a2a transparent; }
     .schedule-grid {
-      display: grid;
-      grid-template-columns: 44px repeat(5, 1fr);
-      min-width: 340px;
+      display:grid;
+      grid-template-columns: 48px repeat(5,1fr);
+      min-width:340px;
     }
+    .col-header { position:sticky; top:0; background:var(--bg); z-index:10;
+      text-align:center; font-size:.66rem; font-weight:700; letter-spacing:.08em;
+      text-transform:uppercase; color:var(--muted); padding:.55rem 0;
+      border-bottom:1px solid var(--border); }
+    .col-header.today { color:var(--orange); }
 
-    /* Header row */
-    .col-header {
-      position: sticky; top: 0;
-      background: var(--bg);
-      z-index: 10;
-      text-align: center;
-      font-size: 0.68rem; font-weight: 700;
-      letter-spacing: 0.08em; text-transform: uppercase;
-      color: var(--muted);
-      padding: 0.6rem 0;
-      border-bottom: 1px solid var(--border);
-    }
-    .col-header:first-child { /* time column */ }
-    .col-header.today { color: var(--orange); }
+    /* Each row is a 15-min slot; height = 14px */
+    .time-label { font-size:.58rem; font-weight:500; color:var(--muted);
+      text-align:right; padding:0 5px 0 0; display:flex; align-items:flex-start;
+      padding-top:2px; border-right:1px solid var(--border); height:14px; }
+    /* Only show label on hour boundaries */
+    .time-label.hide-label { color:transparent; }
 
-    /* Time label */
-    .time-label {
-      font-size: 0.62rem; font-weight: 500;
-      color: var(--muted);
-      text-align: right;
-      padding: 0 6px 0 0;
-      display: flex; align-items: flex-start;
-      padding-top: 3px;
-      border-right: 1px solid var(--border);
-    }
+    .slot-cell { height:14px; border-bottom:1px solid rgba(255,255,255,.04);
+      border-right:1px solid var(--border); background:transparent;
+      position:relative; cursor:pointer; transition:background .1s; }
+    .slot-cell:last-child { border-right:none; }
+    .slot-cell:hover { background:rgba(255,255,255,.03); }
+    /* Hour boundary: slightly stronger line */
+    .slot-cell.hour-top { border-top:1px solid var(--border); }
 
-    /* Cell */
-    .cell {
-      height: 52px;
-      border-bottom: 1px solid var(--border);
-      border-right: 1px solid var(--border);
-      background: var(--surface2);
-      position: relative;
-      cursor: pointer;
-      transition: background 0.15s;
-      overflow: hidden;
-      -webkit-tap-highlight-color: transparent;
+    /* Rendered event block */
+    .event-block {
+      position:absolute; left:2px; right:2px; border-radius:5px;
+      display:flex; align-items:flex-start; justify-content:flex-start;
+      padding:3px 5px; font-size:.6rem; font-weight:700;
+      color:#fff; text-shadow:0 1px 3px rgba(0,0,0,.5);
+      word-break:break-word; line-height:1.2; overflow:hidden;
+      cursor:pointer; z-index:5;
+      transition:filter .15s;
     }
-    .cell:hover { background: #222; }
-    .cell:last-child { border-right: none; }
+    .event-block:hover { filter:brightness(1.18); }
+    /* Libre-hoy overlay */
+    .event-block.libre-hoy { opacity:.25; }
+    .event-block.libre-hoy::after { content:''; position:absolute; inset:0;
+      border-radius:5px; border:1.5px dashed var(--orange); }
 
-    /* Filled cell */
-    .cell.has-class {
-      cursor: pointer;
-    }
-    .cell-inner {
-      position: absolute; inset: 2px;
-      border-radius: 6px;
-      display: flex; align-items: center; justify-content: center;
-      padding: 0 4px;
-      font-size: 0.62rem; font-weight: 700;
-      text-align: center;
-      line-height: 1.2;
-      color: #fff;
-      text-shadow: 0 1px 3px rgba(0,0,0,0.5);
-      word-break: break-word;
-      transition: filter 0.15s;
-    }
-    .cell.has-class:hover .cell-inner { filter: brightness(1.15); }
+    /* ── Add modal ── */
+    .modal-backdrop { position:fixed; inset:0; background:rgba(0,0,0,.78);
+      backdrop-filter:blur(5px); z-index:100; display:flex; align-items:flex-end; justify-content:center;
+      opacity:0; pointer-events:none; transition:opacity .25s; }
+    .modal-backdrop.open { opacity:1; pointer-events:all; }
+    .modal { width:100%; max-width:var(--max-w); background:#181818;
+      border:1px solid var(--border); border-bottom:none; border-radius:20px 20px 0 0;
+      padding:1.4rem 1.25rem 2.5rem;
+      transform:translateY(100%); transition:transform .35s cubic-bezier(.22,1,.36,1); }
+    .modal-backdrop.open .modal { transform:translateY(0); }
+    .modal-handle { width:36px; height:4px; background:#333; border-radius:99px; margin:0 auto 1.1rem; }
+    .modal-title { font-size:.7rem; font-weight:700; letter-spacing:.1em;
+      text-transform:uppercase; color:var(--muted); margin-bottom:.9rem; }
+    .modal-subtitle { font-size:.8rem; color:var(--muted); margin-bottom:1.1rem; }
+    .modal label { display:block; font-size:.7rem; font-weight:600;
+      letter-spacing:.07em; text-transform:uppercase; color:var(--muted); margin-bottom:.4rem; }
+    .modal input[type="text"] { width:100%; background:#222; border:1px solid #333;
+      border-radius:10px; padding:.78rem 1rem; color:var(--text);
+      font-family:'Space Grotesk',sans-serif; font-size:.9rem; outline:none; margin-bottom:1rem;
+      transition:border-color .2s, box-shadow .2s; }
+    .modal input[type="text"]:focus { border-color:var(--orange); box-shadow:0 0 0 3px rgba(255,107,0,.15); }
 
-    /* Libre-hoy override */
-    .cell.libre-hoy {
-      background: var(--surface2) !important;
-    }
-    .cell.libre-hoy .cell-inner {
-      opacity: 0.25;
-    }
-    .cell.libre-hoy::after {
-      content: '';
-      position: absolute; inset: 2px;
-      border-radius: 6px;
-      border: 1.5px dashed var(--orange);
-      pointer-events: none;
-    }
-
-    /* Empty cell hover shimmer */
-    .cell:not(.has-class):hover::after {
-      content: '+';
-      position: absolute; inset: 0;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 1.1rem; color: rgba(255,255,255,0.2);
-      font-weight: 300;
-    }
-
-    /* ── Modal backdrop ── */
-    .modal-backdrop {
-      position: fixed; inset: 0;
-      background: rgba(0,0,0,0.75);
-      backdrop-filter: blur(4px);
-      z-index: 100;
-      display: flex; align-items: flex-end; justify-content: center;
-      opacity: 0; pointer-events: none;
-      transition: opacity 0.25s;
-    }
-    .modal-backdrop.open {
-      opacity: 1; pointer-events: all;
-    }
-
-    /* ── Modal sheet ── */
-    .modal {
-      width: 100%; max-width: var(--max-w);
-      background: #181818;
-      border: 1px solid var(--border);
-      border-bottom: none;
-      border-radius: 20px 20px 0 0;
-      padding: 1.5rem 1.25rem 2.5rem;
-      transform: translateY(100%);
-      transition: transform 0.35s cubic-bezier(0.22,1,0.36,1);
-    }
-    .modal-backdrop.open .modal {
-      transform: translateY(0);
-    }
-
-    .modal-handle {
-      width: 36px; height: 4px;
-      background: #333; border-radius: 99px;
-      margin: 0 auto 1.25rem;
-    }
-    .modal-title {
-      font-size: 0.72rem; font-weight: 700;
-      letter-spacing: 0.1em; text-transform: uppercase;
-      color: var(--muted); margin-bottom: 0.9rem;
-    }
-    .modal-subtitle {
-      font-size: 0.78rem; color: var(--muted);
-      margin-bottom: 1.2rem;
-    }
-
-    .modal label {
-      display: block; font-size: 0.7rem; font-weight: 600;
-      letter-spacing: 0.07em; text-transform: uppercase;
-      color: var(--muted); margin-bottom: 0.4rem;
-    }
-    .modal input[type="text"] {
-      width: 100%;
-      background: #222; border: 1px solid #333; border-radius: 10px;
-      padding: 0.8rem 1rem; color: var(--text);
-      font-family: 'Space Grotesk', sans-serif; font-size: 0.95rem;
-      outline: none; transition: border-color 0.2s;
-      margin-bottom: 1.1rem;
-    }
-    .modal input[type="text"]:focus {
-      border-color: var(--orange);
-      box-shadow: 0 0 0 3px rgba(255,107,0,0.15);
-    }
+    /* Time row */
+    .time-row { display:grid; grid-template-columns:1fr 1fr; gap:.6rem; margin-bottom:1rem; }
+    .time-field label { margin-bottom:.35rem; }
+    .time-input-wrap { position:relative; }
+    .time-input { width:100%; background:#222; border:1px solid #333; border-radius:10px;
+      padding:.72rem .9rem; color:var(--text); font-family:'Space Grotesk',sans-serif;
+      font-size:.9rem; outline:none; appearance:none;
+      transition:border-color .2s, box-shadow .2s; }
+    .time-input:focus { border-color:var(--orange); box-shadow:0 0 0 3px rgba(255,107,0,.15); }
+    /* Duration badge */
+    .duration-badge { text-align:center; font-size:.72rem; color:var(--orange); font-weight:600;
+      margin:-0.5rem 0 .9rem; min-height:1.1rem; }
 
     /* Color palette */
-    .color-palette {
-      display: flex; gap: 0.6rem; margin-bottom: 1.4rem;
-      flex-wrap: wrap;
-    }
-    .color-swatch {
-      width: 36px; height: 36px; border-radius: 50%;
-      cursor: pointer; border: 2.5px solid transparent;
-      transition: transform 0.15s, border-color 0.15s;
-    }
-    .color-swatch:hover { transform: scale(1.1); }
-    .color-swatch.selected {
-      border-color: #fff;
-      transform: scale(1.15);
-      box-shadow: 0 0 0 2px rgba(255,255,255,0.2);
-    }
+    .color-palette { display:flex; gap:.6rem; margin-bottom:1.4rem; flex-wrap:wrap; }
+    .color-swatch { width:34px; height:34px; border-radius:50%; cursor:pointer;
+      border:2.5px solid transparent; transition:transform .15s, border-color .15s; }
+    .color-swatch:hover { transform:scale(1.1); }
+    .color-swatch.selected { border-color:#fff; transform:scale(1.15); box-shadow:0 0 0 2px rgba(255,255,255,.2); }
 
-    .modal-actions {
-      display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;
-    }
-    .btn-cancel {
-      padding: 0.85rem;
-      background: #222; border: 1px solid #333; border-radius: 10px;
-      color: var(--muted); font-family: 'Space Grotesk', sans-serif;
-      font-size: 0.9rem; font-weight: 600; cursor: pointer;
-      transition: background 0.15s;
-    }
-    .btn-cancel:hover { background: #2a2a2a; }
-    .btn-save-class {
-      padding: 0.85rem;
-      background: var(--orange); border: none; border-radius: 10px;
-      color: #fff; font-family: 'Space Grotesk', sans-serif;
-      font-size: 0.9rem; font-weight: 700; cursor: pointer;
-      transition: background 0.2s, box-shadow 0.2s;
-    }
-    .btn-save-class:hover {
-      background: #ff7b1a;
-      box-shadow: 0 0 16px rgba(255,107,0,0.4);
-    }
+    /* Days selector */
+    .days-selector { display:flex; gap:.4rem; margin-bottom:1.3rem; flex-wrap:wrap; }
+    .day-chip { background:#222; border:1px solid #333; border-radius:99px;
+      padding:.28rem .7rem; font-size:.72rem; font-weight:600; color:var(--muted);
+      cursor:pointer; transition:border-color .2s, background .2s, color .2s; user-select:none; }
+    .day-chip.on { border-color:var(--orange); background:rgba(255,107,0,.1); color:var(--orange); }
 
-    /* ── Delete confirm sheet ── */
-    .delete-sheet {
-      position: fixed; inset: 0;
-      background: rgba(0,0,0,0.8);
-      backdrop-filter: blur(4px);
-      z-index: 110;
-      display: flex; align-items: flex-end; justify-content: center;
-      opacity: 0; pointer-events: none;
-      transition: opacity 0.2s;
-    }
-    .delete-sheet.open { opacity: 1; pointer-events: all; }
-    .delete-panel {
-      width: 100%; max-width: var(--max-w);
-      background: #181818;
-      border: 1px solid var(--border); border-bottom: none;
-      border-radius: 20px 20px 0 0;
-      padding: 1.5rem 1.25rem 2.5rem;
-      transform: translateY(100%);
-      transition: transform 0.3s cubic-bezier(0.22,1,0.36,1);
-    }
-    .delete-sheet.open .delete-panel { transform: translateY(0); }
-    .delete-class-name {
-      font-size: 1rem; font-weight: 700; margin-bottom: 0.3rem;
-    }
-    .delete-meta {
-      font-size: 0.8rem; color: var(--muted); margin-bottom: 1.4rem;
-    }
-    .delete-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
-    .btn-delete {
-      padding: 0.85rem; background: rgba(255,60,60,0.12);
-      border: 1px solid rgba(255,60,60,0.25); border-radius: 10px;
-      color: #ff6b6b; font-family: 'Space Grotesk', sans-serif;
-      font-size: 0.9rem; font-weight: 700; cursor: pointer;
-      transition: background 0.15s;
-    }
-    .btn-delete:hover { background: rgba(255,60,60,0.22); }
+    .modal-actions { display:grid; grid-template-columns:1fr 1fr; gap:.75rem; }
+    .btn-cancel { padding:.85rem; background:#222; border:1px solid #333; border-radius:10px;
+      color:var(--muted); font-family:'Space Grotesk',sans-serif; font-size:.9rem; font-weight:600; cursor:pointer; }
+    .btn-cancel:hover { background:#2a2a2a; }
+    .btn-save-class { padding:.85rem; background:var(--orange); border:none; border-radius:10px;
+      color:#fff; font-family:'Space Grotesk',sans-serif; font-size:.9rem; font-weight:700; cursor:pointer;
+      transition:background .2s, box-shadow .2s; }
+    .btn-save-class:hover { background:#ff7b1a; box-shadow:0 0 16px rgba(255,107,0,.4); }
 
-    /* ── Loading skeleton ── */
-    .skeleton-row {
-      height: 52px;
-      background: linear-gradient(90deg, #1a1a1a 25%, #222 50%, #1a1a1a 75%);
-      background-size: 200% 100%;
-      animation: shimmer 1.4s infinite;
-    }
-    @keyframes shimmer {
-      0%   { background-position: 200% 0; }
-      100% { background-position: -200% 0; }
-    }
+    /* ── Delete sheet ── */
+    .delete-sheet { position:fixed; inset:0; background:rgba(0,0,0,.82);
+      backdrop-filter:blur(5px); z-index:110; display:flex; align-items:flex-end; justify-content:center;
+      opacity:0; pointer-events:none; transition:opacity .2s; }
+    .delete-sheet.open { opacity:1; pointer-events:all; }
+    .delete-panel { width:100%; max-width:var(--max-w); background:#181818;
+      border:1px solid var(--border); border-bottom:none; border-radius:20px 20px 0 0;
+      padding:1.4rem 1.25rem 2.5rem;
+      transform:translateY(100%); transition:transform .3s cubic-bezier(.22,1,.36,1); }
+    .delete-sheet.open .delete-panel { transform:translateY(0); }
+    .del-name { font-size:1rem; font-weight:700; margin-bottom:.25rem; }
+    .del-meta { font-size:.8rem; color:var(--muted); margin-bottom:1.3rem; }
+    .del-actions { display:grid; grid-template-columns:1fr 1fr; gap:.75rem; }
+    .btn-delete { padding:.85rem; background:rgba(255,60,60,.12);
+      border:1px solid rgba(255,60,60,.25); border-radius:10px; color:#ff6b6b;
+      font-family:'Space Grotesk',sans-serif; font-size:.9rem; font-weight:700; cursor:pointer;
+      transition:background .15s; }
+    .btn-delete:hover { background:rgba(255,60,60,.22); }
 
-    /* ── Spinner ── */
-    .spinner {
-      display: inline-block; width: 14px; height: 14px;
-      border: 2px solid rgba(255,255,255,0.3);
-      border-top-color: #fff; border-radius: 50%;
-      animation: spin 0.7s linear infinite;
-      vertical-align: middle;
-    }
-    @keyframes spin { to { transform: rotate(360deg); } }
-
-    /* ── Bottom nav placeholder ── */
-    .bottom-safe { height: 2rem; }
+    /* ── Toast ── */
+    .toast { position:fixed; bottom:5rem; left:50%;
+      transform:translateX(-50%) translateY(20px);
+      background:#1e1e1e; border:1px solid var(--border);
+      color:var(--text); font-size:.82rem; font-weight:500;
+      padding:.55rem 1.1rem; border-radius:99px;
+      opacity:0; pointer-events:none; transition:opacity .25s, transform .25s; z-index:300; }
+    .toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
+    .toast.ok  { border-color:#22C55E; color:#22C55E; }
+    .toast.err { border-color:#ff6b6b; color:#ff6b6b; }
+    .spinner { display:inline-block; width:14px; height:14px; border:2px solid rgba(255,255,255,.25);
+      border-top-color:#fff; border-radius:50%; animation:spin .7s linear infinite; vertical-align:middle; }
+    @keyframes spin { to { transform:rotate(360deg); } }
+    .gate { text-align:center; padding:4rem 2rem; color:var(--muted); }
+    .gate a { color:var(--orange); }
   </style>
 </head>
 <body>
 
-<!-- Toast -->
 <div class="toast" id="toast"></div>
 
-<!-- Add class modal -->
+<!-- Add/edit modal -->
 <div class="modal-backdrop" id="addModal">
   <div class="modal">
     <div class="modal-handle"></div>
-    <div class="modal-title">Nueva clase</div>
+    <div class="modal-title" id="modalTitle">Nueva clase</div>
     <p class="modal-subtitle" id="modalSubtitle"></p>
+
     <label for="className">Nombre de la clase</label>
-    <input type="text" id="className" placeholder="Ej: Cálculo I, Física…" maxlength="30" />
+    <input type="text" id="className" placeholder="Ej: Cálculo I, Lab Física…" maxlength="30" />
+
+    <div class="time-row">
+      <div class="time-field">
+        <label>Inicio</label>
+        <input type="time" id="timeStart" class="time-input" value="08:00" />
+      </div>
+      <div class="time-field">
+        <label>Fin</label>
+        <input type="time" id="timeEnd" class="time-input" value="09:30" />
+      </div>
+    </div>
+    <div class="duration-badge" id="durationBadge"></div>
+
+    <label>Días</label>
+    <div class="days-selector" id="daysSelector"></div>
+
     <label>Color</label>
     <div class="color-palette" id="colorPalette"></div>
+
     <div class="modal-actions">
       <button class="btn-cancel" onclick="closeAddModal()">Cancelar</button>
-      <button class="btn-save-class" onclick="saveClass()">Guardar</button>
+      <button class="btn-save-class" onclick="saveEvent()">Guardar</button>
     </div>
   </div>
 </div>
 
-<!-- Delete confirm sheet -->
+<!-- Delete sheet -->
 <div class="delete-sheet" id="deleteSheet">
   <div class="delete-panel">
     <div class="modal-handle"></div>
-    <div class="modal-title" style="margin-bottom:.6rem">Eliminar clase</div>
-    <div class="delete-class-name" id="deleteClassName"></div>
-    <div class="delete-meta" id="deleteMeta"></div>
-    <div class="delete-actions">
+    <div class="modal-title">Eliminar clase</div>
+    <div class="del-name" id="delName"></div>
+    <div class="del-meta" id="delMeta"></div>
+    <div class="del-actions">
       <button class="btn-cancel" onclick="closeDeleteSheet()">Cancelar</button>
       <button class="btn-delete" onclick="confirmDelete()">🗑 Eliminar</button>
     </div>
   </div>
 </div>
 
+<!-- Auth gate -->
+<div id="authGate" class="gate" style="display:none">
+  Debes <a href="../index.html">iniciar sesión</a> para ver tu horario.
+</div>
+<div id="loadingGate" class="gate">Cargando…</div>
+
 <div class="page" id="mainPage" style="display:none">
 
-  <!-- Top bar -->
   <div class="topbar">
     <div class="topbar-left">
       <button class="back-btn" onclick="history.back()">←</button>
       <span class="page-title">📅 Mi Horario</span>
     </div>
-    <button class="save-btn" id="saveBtn" onclick="saveToFirestore()">
-      Guardar
-    </button>
+    <button class="save-btn" id="saveBtn" onclick="saveToFirestore()">Guardar</button>
   </div>
 
-  <!-- Day libre toggles -->
   <div class="day-toggles" id="dayToggles"></div>
 
-  <!-- Grid -->
-  <div class="grid-wrap">
+  <div class="grid-scroll">
     <div class="schedule-grid" id="scheduleGrid"></div>
   </div>
 
-  <div class="bottom-safe"></div>
 </div>
 
-<!-- Auth gate -->
-<div class="auth-gate" id="authGate" style="display:none">
-  <p>Debes <a href="../index.html">iniciar sesión</a> para ver tu horario.</p>
-</div>
-
-<!-- Loading -->
-<div class="auth-gate" id="loadingGate">
-  <p style="color:#444">Cargando horario…</p>
-</div>
-
-<!-- ── Firebase ── -->
 <script type="module">
   import { initializeApp }    from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-  import { getAuth, onAuthStateChanged }
-                               from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+  import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
   import { getFirestore, doc, getDoc, setDoc, serverTimestamp }
-                               from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+    from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
   const firebaseConfig = {
-    apiKey: "AIzaSyDkAVe9p_toQ4CAveb7iaI0bvTsJc6gSpE",
-    authDomain: "syncu-3abec.firebaseapp.com",
-    projectId: "syncu-3abec",
-    storageBucket: "syncu-3abec.firebasestorage.app",
-    messagingSenderId: "287232013909",
-    appId: "1:287232013909:web:d05003a489fa0190e806dc"
+    apiKey:"AIzaSyDkAVe9p_toQ4CAveb7iaI0bvTsJc6gSpE",
+    authDomain:"syncu-3abec.firebaseapp.com", projectId:"syncu-3abec",
+    storageBucket:"syncu-3abec.firebasestorage.app",
+    messagingSenderId:"287232013909", appId:"1:287232013909:web:d05003a489fa0190e806dc"
   };
-
   const app  = initializeApp(firebaseConfig);
   const auth = getAuth(app);
   const db   = getFirestore(app);
 
-  // ── Constants ──────────────────────────────────────────────
+  // ── Constants ──────────────────────────────────────────
   const DIAS   = ['lunes','martes','miércoles','jueves','viernes'];
   const DIAS_S = ['Lun','Mar','Mié','Jue','Vie'];
-  const HOURS  = [];
-  for (let h = 6; h <= 19; h++) HOURS.push(`${h}:00`);
-
   const COLORS = ['#FF6B00','#E63946','#2EC4B6','#8338EC','#3A86FF','#06D6A0'];
 
-  // Map JS day (0=Sun) → dia name
-  const TODAY_IDX = (() => {
-    const d = new Date().getDay(); // 0=Sun,1=Mon…
-    return d >= 1 && d <= 5 ? d - 1 : -1; // -1 if weekend
-  })();
+  // Grid: 6:00 → 20:00 in 15-min slots = 56 slots
+  const START_MIN = 6 * 60;   // 360
+  const END_MIN   = 20 * 60;  // 1200
+  const SLOT_MIN  = 15;
+  const TOTAL_SLOTS = (END_MIN - START_MIN) / SLOT_MIN; // 56
 
-  // ── State ──────────────────────────────────────────────────
-  let currentUser = null;
-  // bloques: Map<`${dia}|${hora}`, {clase, color, libre}>
-  let bloques = {};
-  // diasLibresHoy: Set of dia strings marked free today
+  const TODAY_IDX = (() => { const d = new Date().getDay(); return d>=1&&d<=5?d-1:-1; })();
+
+  // ── State ───────────────────────────────────────────────
+  let myUid = null;
+  // events: array of {id, dia[], nombre, inicio, fin, color}
+  // dia: array of dia strings (multi-day support)
+  // inicio/fin: 'HH:MM'
+  let events = [];
   let diasLibresHoy = new Set();
-
-  let pendingCell = null; // {dia, hora} for the modal
   let selectedColor = COLORS[0];
-  let deleteTarget  = null; // {dia, hora}
+  let selectedDays  = new Set();
+  let deleteTargetId = null;
+  let editTargetId   = null; // null = new event
 
-  // ── Auth gate ──────────────────────────────────────────────
-  onAuthStateChanged(auth, async user => {
-    document.getElementById('loadingGate').style.display = 'none';
-    if (!user) {
-      document.getElementById('authGate').style.display = 'block';
-      return;
-    }
-    currentUser = user;
-    document.getElementById('mainPage').style.display = 'block';
-    await loadFromFirestore();
-    buildUI();
-  });
-
-  // ── Load ───────────────────────────────────────────────────
-  async function loadFromFirestore() {
-    try {
-      const ref  = doc(db, 'horarios', currentUser.uid);
-      const snap = await getDoc(ref);
-      if (snap.exists()) {
-        const data = snap.data();
-        (data.bloques || []).forEach(b => {
-          bloques[key(b.dia, b.hora)] = {
-            clase: b.clase, color: b.color, libre: b.libre || false
-          };
-        });
-        (data.diasLibresHoy || []).forEach(d => diasLibresHoy.add(d));
-      }
-    } catch(e) { showToast('Error al cargar horario', 'err'); }
+  function uid4() { return Math.random().toString(36).slice(2,6); }
+  function timeToMin(t) { const [h,m] = t.split(':').map(Number); return h*60+m; }
+  function minToTime(m) { return `${String(Math.floor(m/60)).padStart(2,'0')}:${String(m%60).padStart(2,'0')}`; }
+  function durationLabel(startT, endT) {
+    const d = timeToMin(endT) - timeToMin(startT);
+    if (d <= 0) return '';
+    const h = Math.floor(d/60), m = d%60;
+    if (h && m) return `${h}h ${m}min`;
+    if (h) return `${h}h`;
+    return `${m}min`;
   }
 
-  // ── Save ───────────────────────────────────────────────────
+  // ── Auth ────────────────────────────────────────────────
+  onAuthStateChanged(auth, async user => {
+    document.getElementById('loadingGate').style.display = 'none';
+    if (!user) { document.getElementById('authGate').style.display = 'block'; return; }
+    myUid = user.uid;
+    await loadFromFirestore();
+    document.getElementById('mainPage').style.display = 'block';
+    buildDayToggles();
+    buildGrid();
+    renderAllEvents();
+  });
+
+  async function loadFromFirestore() {
+    try {
+      const snap = await getDoc(doc(db, 'horarios', myUid));
+      if (snap.exists()) {
+        const data = snap.data();
+        events = (data.events || []);
+        (data.diasLibresHoy || []).forEach(d => diasLibresHoy.add(d));
+      }
+    } catch(e) { showToast('Error al cargar','err'); }
+  }
+
   window.saveToFirestore = async function() {
-    if (!currentUser) return;
     const btn = document.getElementById('saveBtn');
     btn.disabled = true;
     btn.innerHTML = '<span class="spinner"></span>';
-
-    const bloquesArr = Object.entries(bloques).map(([k, v]) => {
-      const [dia, hora] = k.split('|');
-      return { dia, hora, clase: v.clase, color: v.color, libre: v.libre };
-    });
-
     try {
-      await setDoc(doc(db, 'horarios', currentUser.uid), {
-        bloques: bloquesArr,
+      await setDoc(doc(db,'horarios',myUid), {
+        events,
         diasLibresHoy: [...diasLibresHoy],
         updatedAt: serverTimestamp(),
       });
-      showToast('✓ Horario guardado', 'ok');
-    } catch(e) {
-      showToast('Error al guardar', 'err');
-    } finally {
-      btn.disabled = false;
-      btn.innerHTML = 'Guardar';
-    }
+      showToast('✓ Horario guardado','ok');
+    } catch(e) { showToast('Error al guardar','err'); }
+    finally { btn.disabled=false; btn.innerHTML='Guardar'; }
   };
 
-  // ── Build UI ───────────────────────────────────────────────
-  function buildUI() {
-    buildDayToggles();
-    buildGrid();
-  }
-
+  // ── Day toggles ────────────────────────────────────────
   function buildDayToggles() {
     const wrap = document.getElementById('dayToggles');
     wrap.innerHTML = '';
-    DIAS.forEach((dia, i) => {
+    DIAS.forEach((dia,i) => {
       const tag = document.createElement('div');
-      tag.className = `day-tag ${diasLibresHoy.has(dia) ? 'libre' : ''}`;
-      tag.dataset.dia = dia;
-      tag.innerHTML = `<span class="dot"></span>${DIAS_S[i]} libre hoy`;
-      tag.addEventListener('click', () => toggleDayLibre(dia, tag));
+      tag.className = `day-tag ${diasLibresHoy.has(dia)?'libre':''}`;
+      tag.innerHTML = `<span class="dot"></span>${DIAS_S[i]} libre`;
+      tag.addEventListener('click', () => {
+        diasLibresHoy.has(dia) ? diasLibresHoy.delete(dia) : diasLibresHoy.add(dia);
+        tag.classList.toggle('libre');
+        renderAllEvents();
+      });
       wrap.appendChild(tag);
     });
   }
 
-  function toggleDayLibre(dia, tag) {
-    if (diasLibresHoy.has(dia)) {
-      diasLibresHoy.delete(dia);
-      tag.classList.remove('libre');
-    } else {
-      diasLibresHoy.add(dia);
-      tag.classList.add('libre');
-    }
-    refreshGridCells();
-  }
-
+  // ── Build grid (header + slot cells) ──────────────────
   function buildGrid() {
     const grid = document.getElementById('scheduleGrid');
     grid.innerHTML = '';
 
     // Header row
-    const timeHead = document.createElement('div');
-    timeHead.className = 'col-header';
-    grid.appendChild(timeHead);
-
-    DIAS.forEach((dia, i) => {
+    const th = document.createElement('div');
+    th.className = 'col-header';
+    grid.appendChild(th);
+    DIAS.forEach((dia,i) => {
       const h = document.createElement('div');
-      h.className = `col-header ${i === TODAY_IDX ? 'today' : ''}`;
+      h.className = `col-header ${i===TODAY_IDX?'today':''}`;
       h.textContent = DIAS_S[i];
       grid.appendChild(h);
     });
 
-    // Rows
-    HOURS.forEach(hora => {
-      // Time label
-      const lbl = document.createElement('div');
-      lbl.className = 'time-label';
-      lbl.textContent = hora;
-      grid.appendChild(lbl);
+    // Slot rows
+    for (let s = 0; s < TOTAL_SLOTS; s++) {
+      const absMin = START_MIN + s * SLOT_MIN;
+      const isHour = absMin % 60 === 0;
+      const label  = document.createElement('div');
+      label.className = `time-label ${isHour?'':'hide-label'}`;
+      if (isHour) label.textContent = minToTime(absMin);
+      grid.appendChild(label);
 
-      // Cells
       DIAS.forEach(dia => {
-        const cell = buildCell(dia, hora);
+        const cell = document.createElement('div');
+        cell.className = `slot-cell ${isHour?'hour-top':''}`;
+        cell.dataset.dia  = dia;
+        cell.dataset.slot = s;
+        cell.addEventListener('click', () => onCellClick(dia, s));
         grid.appendChild(cell);
       });
-    });
-  }
-
-  function buildCell(dia, hora) {
-    const cell = document.createElement('div');
-    cell.className = 'cell';
-    cell.dataset.dia  = dia;
-    cell.dataset.hora = hora;
-    renderCell(cell, dia, hora);
-    attachCellEvents(cell, dia, hora);
-    return cell;
-  }
-
-  function renderCell(cell, dia, hora) {
-    const k = key(dia, hora);
-    const b = bloques[k];
-    const esLibreHoy = diasLibresHoy.has(dia);
-
-    // Reset
-    cell.className = 'cell';
-    cell.innerHTML = '';
-    cell.style.background = '';
-
-    if (b) {
-      cell.classList.add('has-class');
-      if (esLibreHoy) cell.classList.add('libre-hoy');
-      else cell.style.background = 'transparent';
-
-      const inner = document.createElement('div');
-      inner.className = 'cell-inner';
-      inner.style.background = b.color;
-      inner.textContent = b.clase;
-      cell.appendChild(inner);
     }
   }
 
-  function refreshGridCells() {
-    document.querySelectorAll('.cell').forEach(cell => {
-      renderCell(cell, cell.dataset.dia, cell.dataset.hora);
-      attachCellEvents(cell, cell.dataset.dia, cell.dataset.hora);
+  // ── Render all events ──────────────────────────────────
+  function renderAllEvents() {
+    // Remove existing event blocks
+    document.querySelectorAll('.event-block').forEach(e => e.remove());
+
+    events.forEach(ev => {
+      (ev.dia || []).forEach(dia => renderEvent(ev, dia));
     });
   }
 
-  function attachCellEvents(cell, dia, hora) {
-    // Remove old listeners by cloning
-    const fresh = cell.cloneNode(true);
-    cell.replaceWith(fresh);
+  function renderEvent(ev, dia) {
+    const startMin = timeToMin(ev.inicio);
+    const endMin   = timeToMin(ev.fin);
+    if (startMin >= endMin) return;
 
+    const colIdx  = DIAS.indexOf(dia);
+    if (colIdx < 0) return;
+
+    // Find the DOM cell for slot at startMin
+    const startSlot = (startMin - START_MIN) / SLOT_MIN;
+    if (startSlot < 0 || startSlot >= TOTAL_SLOTS) return;
+
+    const cell = document.querySelector(
+      `.slot-cell[data-dia="${dia}"][data-slot="${Math.floor(startSlot)}"]`
+    );
+    if (!cell) return;
+
+    const heightSlots = (endMin - startMin) / SLOT_MIN;
+    const topPx    = ((startMin - START_MIN) % SLOT_MIN) / SLOT_MIN * 14; // fraction of a slot
+    const heightPx = heightSlots * 14;
+
+    const block = document.createElement('div');
+    block.className = `event-block ${diasLibresHoy.has(dia)?'libre-hoy':''}`;
+    block.style.cssText = `background:${ev.color};top:${topPx}px;height:${heightPx}px`;
+    block.dataset.evId = ev.id;
+    block.dataset.dia  = dia;
+    block.textContent = ev.nombre;
+
+    // Long press to delete/edit
     let pressTimer;
-
-    fresh.addEventListener('click', () => {
-      const k = key(dia, hora);
-      if (bloques[k]) return; // filled cell — ignore single tap (use long press)
-      openAddModal(dia, hora);
+    block.addEventListener('pointerdown', () => {
+      pressTimer = setTimeout(() => openDeleteSheet(ev.id, dia), 500);
+    });
+    block.addEventListener('pointerup',    () => clearTimeout(pressTimer));
+    block.addEventListener('pointerleave', () => clearTimeout(pressTimer));
+    // Single tap to edit
+    block.addEventListener('click', e => {
+      e.stopPropagation();
+      openEditModal(ev.id);
     });
 
-    // Long press → delete
-    fresh.addEventListener('pointerdown', () => {
-      pressTimer = setTimeout(() => {
-        if (bloques[key(dia, hora)]) openDeleteSheet(dia, hora);
-      }, 500);
-    });
-    fresh.addEventListener('pointerup',    () => clearTimeout(pressTimer));
-    fresh.addEventListener('pointerleave', () => clearTimeout(pressTimer));
+    cell.appendChild(block);
   }
 
-  // ── Add modal ──────────────────────────────────────────────
-  window.openAddModal = function(dia, hora) {
-    pendingCell = { dia, hora };
-    document.getElementById('modalSubtitle').textContent =
-      `${capitalize(dia)} · ${hora}`;
+  // ── Cell click: open add modal ─────────────────────────
+  function onCellClick(dia, slotIdx) {
+    // Don't open if click was on an existing block
+    const absMin = START_MIN + slotIdx * SLOT_MIN;
+    const inicio = minToTime(absMin);
+    const fin    = minToTime(Math.min(absMin + 90, END_MIN));
+    openAddModal(inicio, fin, dia);
+  }
+
+  // ── Add modal ──────────────────────────────────────────
+  window.openAddModal = function(inicio='08:00', fin='09:30', preselDia=null) {
+    editTargetId = null;
+    document.getElementById('modalTitle').textContent = 'Nueva clase';
+    document.getElementById('modalSubtitle').textContent = '';
     document.getElementById('className').value = '';
+    document.getElementById('timeStart').value = inicio;
+    document.getElementById('timeEnd').value   = fin;
+    updateDurationBadge();
+
+    // Days selector
+    selectedDays = new Set(preselDia ? [preselDia] : []);
+    renderDaysSelector();
 
     // Color palette
-    const pal = document.getElementById('colorPalette');
-    pal.innerHTML = '';
     selectedColor = COLORS[0];
-    COLORS.forEach(c => {
-      const sw = document.createElement('div');
-      sw.className = `color-swatch ${c === selectedColor ? 'selected' : ''}`;
-      sw.style.background = c;
-      sw.dataset.color = c;
-      sw.addEventListener('click', () => {
-        document.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('selected'));
-        sw.classList.add('selected');
-        selectedColor = c;
-      });
-      pal.appendChild(sw);
-    });
+    renderColorPalette();
 
     document.getElementById('addModal').classList.add('open');
     setTimeout(() => document.getElementById('className').focus(), 350);
   };
 
-  window.closeAddModal = function() {
-    document.getElementById('addModal').classList.remove('open');
-    pendingCell = null;
+  window.openEditModal = function(evId) {
+    const ev = events.find(e => e.id === evId);
+    if (!ev) return;
+    editTargetId = evId;
+    document.getElementById('modalTitle').textContent = 'Editar clase';
+    document.getElementById('modalSubtitle').textContent = '';
+    document.getElementById('className').value = ev.nombre;
+    document.getElementById('timeStart').value = ev.inicio;
+    document.getElementById('timeEnd').value   = ev.fin;
+    updateDurationBadge();
+    selectedDays  = new Set(ev.dia || []);
+    selectedColor = ev.color || COLORS[0];
+    renderDaysSelector();
+    renderColorPalette();
+    document.getElementById('addModal').classList.add('open');
   };
 
-  window.saveClass = function() {
-    const nombre = document.getElementById('className').value.trim();
-    if (!nombre) {
-      document.getElementById('className').style.borderColor = '#ff6b6b';
-      return;
+  window.closeAddModal = function() {
+    document.getElementById('addModal').classList.remove('open');
+    editTargetId = null;
+  };
+
+  function renderDaysSelector() {
+    const wrap = document.getElementById('daysSelector');
+    wrap.innerHTML = '';
+    DIAS.forEach((dia,i) => {
+      const chip = document.createElement('div');
+      chip.className = `day-chip ${selectedDays.has(dia)?'on':''}`;
+      chip.textContent = DIAS_S[i];
+      chip.addEventListener('click', () => {
+        selectedDays.has(dia) ? selectedDays.delete(dia) : selectedDays.add(dia);
+        chip.classList.toggle('on');
+      });
+      wrap.appendChild(chip);
+    });
+  }
+
+  function renderColorPalette() {
+    const pal = document.getElementById('colorPalette');
+    pal.innerHTML = '';
+    COLORS.forEach(c => {
+      const sw = document.createElement('div');
+      sw.className = `color-swatch ${c===selectedColor?'selected':''}`;
+      sw.style.background = c;
+      sw.addEventListener('click', () => {
+        document.querySelectorAll('.color-swatch').forEach(s=>s.classList.remove('selected'));
+        sw.classList.add('selected');
+        selectedColor = c;
+      });
+      pal.appendChild(sw);
+    });
+  }
+
+  function updateDurationBadge() {
+    const s = document.getElementById('timeStart').value;
+    const e = document.getElementById('timeEnd').value;
+    const badge = document.getElementById('durationBadge');
+    if (s && e) {
+      const label = durationLabel(s, e);
+      badge.textContent = label ? `Duración: ${label}` : (timeToMin(e)<=timeToMin(s)?'⚠️ Fin debe ser después del inicio':'');
     }
-    if (!pendingCell) return;
+  }
+  document.getElementById('timeStart').addEventListener('input', updateDurationBadge);
+  document.getElementById('timeEnd').addEventListener('input',   updateDurationBadge);
 
-    const { dia, hora } = pendingCell;
-    bloques[key(dia, hora)] = { clase: nombre, color: selectedColor, libre: false };
+  window.saveEvent = function() {
+    const nombre = document.getElementById('className').value.trim();
+    const inicio = document.getElementById('timeStart').value;
+    const fin    = document.getElementById('timeEnd').value;
 
-    // Re-render the specific cell
-    const cell = findCell(dia, hora);
-    if (cell) {
-      renderCell(cell, dia, hora);
-      attachCellEvents(cell, dia, hora);
+    if (!nombre) { document.getElementById('className').style.borderColor='#ff6b6b'; return; }
+    if (!inicio || !fin || timeToMin(fin) <= timeToMin(inicio)) {
+      showToast('El fin debe ser después del inicio','err'); return;
+    }
+    if (!selectedDays.size) { showToast('Selecciona al menos un día','err'); return; }
+
+    if (editTargetId) {
+      // Update existing
+      const idx = events.findIndex(e => e.id === editTargetId);
+      if (idx >= 0) {
+        events[idx] = { ...events[idx], nombre, inicio, fin, color:selectedColor, dia:[...selectedDays] };
+      }
+    } else {
+      events.push({ id:uid4(), nombre, inicio, fin, color:selectedColor, dia:[...selectedDays] });
     }
 
     closeAddModal();
-    showToast('Clase agregada', 'ok');
+    renderAllEvents();
+    showToast(editTargetId ? 'Clase actualizada' : 'Clase agregada','ok');
   };
 
-  // ── Delete sheet ───────────────────────────────────────────
-  window.openDeleteSheet = function(dia, hora) {
-    const b = bloques[key(dia, hora)];
-    if (!b) return;
-    deleteTarget = { dia, hora };
-    document.getElementById('deleteClassName').textContent = b.clase;
-    document.getElementById('deleteMeta').textContent = `${capitalize(dia)} · ${hora}`;
+  // ── Delete sheet ───────────────────────────────────────
+  window.openDeleteSheet = function(evId, dia) {
+    const ev = events.find(e => e.id === evId);
+    if (!ev) return;
+    deleteTargetId = evId;
+    document.getElementById('delName').textContent = ev.nombre;
+    document.getElementById('delMeta').textContent =
+      `${ev.dia.map(d=>DIAS_S[DIAS.indexOf(d)]).join(', ')} · ${ev.inicio}–${ev.fin}`;
     document.getElementById('deleteSheet').classList.add('open');
   };
-
   window.closeDeleteSheet = function() {
     document.getElementById('deleteSheet').classList.remove('open');
-    deleteTarget = null;
+    deleteTargetId = null;
   };
-
   window.confirmDelete = function() {
-    if (!deleteTarget) return;
-    const { dia, hora } = deleteTarget;
-    delete bloques[key(dia, hora)];
-    const cell = findCell(dia, hora);
-    if (cell) {
-      renderCell(cell, dia, hora);
-      attachCellEvents(cell, dia, hora);
-    }
+    if (!deleteTargetId) return;
+    events = events.filter(e => e.id !== deleteTargetId);
     closeDeleteSheet();
-    showToast('Clase eliminada', 'ok');
+    renderAllEvents();
+    showToast('Clase eliminada','ok');
   };
 
-  // ── Helpers ────────────────────────────────────────────────
-  function key(dia, hora) { return `${dia}|${hora}`; }
-  function capitalize(s)  { return s.charAt(0).toUpperCase() + s.slice(1); }
-  function findCell(dia, hora) {
-    return document.querySelector(`.cell[data-dia="${dia}"][data-hora="${hora}"]`);
-  }
-
-  function showToast(msg, type = 'ok') {
-    const t = document.getElementById('toast');
-    t.textContent = msg;
-    t.className = `toast ${type} show`;
-    setTimeout(() => t.classList.remove('show'), 2400);
-  }
-
-  // Close modals on backdrop tap
+  // ── Backdrop close ─────────────────────────────────────
   document.getElementById('addModal').addEventListener('click', e => {
     if (e.target === e.currentTarget) closeAddModal();
   });
   document.getElementById('deleteSheet').addEventListener('click', e => {
     if (e.target === e.currentTarget) closeDeleteSheet();
   });
-
-  // Enter to save class
   document.getElementById('className').addEventListener('keydown', e => {
-    if (e.key === 'Enter') window.saveClass();
+    if (e.key === 'Enter') window.saveEvent();
   });
+
+  // ── Toast ──────────────────────────────────────────────
+  function showToast(msg, type='') {
+    const t = document.getElementById('toast');
+    t.textContent = msg; t.className = `toast ${type} show`;
+    setTimeout(() => t.classList.remove('show'), 2400);
+  }
 </script>
 
 <script>
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('/syncu/sw.js')
-      .catch(err => console.warn('SW:', err));
+    navigator.serviceWorker.register('/syncu/sw.js').catch(e => console.warn('SW:',e));
   }
 </script>
 </body>
