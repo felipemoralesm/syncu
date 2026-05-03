@@ -637,8 +637,8 @@
     const newState = !isLibre;
     // Play synthesized sound (fire-and-forget)
     try {
-      if (newState) window.SyncUSound?.playLibre();
-      else          window.SyncUSound?.playOcupado();
+      if (newState && window.SyncUSound) window.SyncUSound.playLibre();
+      else if (window.SyncUSound) window.SyncUSound.playOcupado();
     } catch(_) {}
     applyLibreState(newState, true);
 
@@ -813,7 +813,6 @@
   window.addEventListener('pagehide', () => { if (feedUnsub) feedUnsub(); });
 </script>
 
-<script src="../js/sounds.js"></script>
 <script src="../js/sounds.js"></script>
 <script>
   if ('serviceWorker' in navigator) {
