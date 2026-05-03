@@ -360,6 +360,55 @@
     .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
     .toast.err  { border-color: #ff6b6b; color: #ff6b6b; }
     .toast.ok   { border-color: var(--green); color: var(--green); }
+
+    /* ── Notif permission banner ── */
+    .notif-banner {
+      margin: 0.6rem 1rem 0;
+      background: var(--card);
+      border: 1px solid rgba(255,107,0,0.28);
+      border-radius: 14px;
+      padding: 0.75rem 0.9rem;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      animation: fadeSlide 0.4s ease;
+    }
+    .notif-banner-text {
+      flex: 1;
+      font-size: 0.78rem;
+      font-weight: 500;
+      color: var(--text);
+      line-height: 1.35;
+    }
+    .notif-banner-activate {
+      flex-shrink: 0;
+      background: var(--orange);
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      padding: 0.42rem 0.85rem;
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 0.78rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background 0.2s, box-shadow 0.2s;
+    }
+    .notif-banner-activate:hover {
+      background: #ff7b1a;
+      box-shadow: 0 0 12px rgba(255,107,0,0.4);
+    }
+    .notif-banner-dismiss {
+      flex-shrink: 0;
+      background: none;
+      border: none;
+      color: var(--muted);
+      font-size: 1.1rem;
+      cursor: pointer;
+      padding: 0;
+      line-height: 1;
+      transition: color 0.15s;
+    }
+    .notif-banner-dismiss:hover { color: var(--text); }
   </style>
 </head>
 <body>
@@ -392,6 +441,19 @@
     <div class="top-right">
       <div class="avatar-top" id="topAvatar" onclick="window.location.href='perfil.html'"></div>
     </div>
+  </div>
+
+
+  <!-- ── Notification permission banner ── -->
+  <div class="notif-banner" id="notifBanner" style="display:none">
+    <span style="font-size:1.2rem;flex-shrink:0">🔔</span>
+    <div class="notif-banner-text">
+      Activa las notificaciones para saber cuando tus amigos están libres
+    </div>
+    <button class="notif-banner-activate" id="notifActivateBtn" onclick="activateNotifications()">
+      Activar
+    </button>
+    <button class="notif-banner-dismiss" onclick="dismissNotifBanner()" title="Cerrar">×</button>
   </div>
 
   <!-- ── LIBRE BUTTON ── -->
@@ -529,28 +591,62 @@
     renderTopbar();
     applyLibreState(myDoc.disponible || false, false);
     startFeedListener();
-    // ── Init push notifications ─────────────────────────────
-    initFCM(app, db, myUid);
+    // ── Show notification permission banner if needed ────────
+    maybeShowNotifBanner();
   });
 
-  // ── FCM: request permission + save token ─────────────────
-  async function initFCM(firebaseApp, firestoreDb, uid) {
+  // ── Notification banner: show if permission not yet granted ─
+  function maybeShowNotifBanner() {
+    if (!('Notification' in window)) return;
+    if (Notification.permission === 'granted') {
+      // Already granted — register token silently
+      registerFCMToken();
+      return;
+    }
+    if (Notification.permission === 'denied') return;
+    if (localStorage.getItem('notif_dismissed') === '1') return;
+    // 'default' — show the banner
+    document.getElementById('notifBanner').style.display = 'flex';
+  }
+
+  window.dismissNotifBanner = function() {
+    document.getElementById('notifBanner').style.display = 'none';
+    localStorage.setItem('notif_dismissed', '1');
+  };
+
+  window.activateNotifications = async function() {
+    const btn = document.getElementById('notifActivateBtn');
+    btn.disabled = true;
+    btn.textContent = '…';
     try {
-      if (!('Notification' in window)) return;
+      const permission = await Notification.requestPermission();
+      if (permission === 'granted') {
+        document.getElementById('notifBanner').style.display = 'none';
+        await registerFCMToken();
+        showToast('🔔 Notificaciones activadas', 'ok');
+      } else {
+        document.getElementById('notifBanner').style.display = 'none';
+        localStorage.setItem('notif_dismissed', '1');
+        showToast('Notificaciones no activadas', '');
+      }
+    } catch (err) {
+      console.warn('[SyncU FCM] Error al pedir permiso:', err);
+      btn.disabled = false;
+      btn.textContent = 'Activar';
+    }
+  };
+
+  // ── FCM: get token + save to Firestore ───────────────────
+  async function registerFCMToken() {
+    try {
       if (!('serviceWorker' in navigator)) return;
 
-      const permission = await Notification.requestPermission();
-      if (permission !== 'granted') {
-        console.log('[SyncU FCM] Permiso denegado');
-        return;
-      }
-
-      const messaging = getMessaging(firebaseApp);
+      const messaging = getMessaging(app);
       const swReg     = await navigator.serviceWorker.ready;
 
       const token = await getToken(messaging, {
-        vapidKey:                    VAPID_KEY,
-        serviceWorkerRegistration:   swReg,
+        vapidKey:                  VAPID_KEY,
+        serviceWorkerRegistration: swReg,
       });
 
       if (!token) {
@@ -558,21 +654,20 @@
         return;
       }
 
-      // Guardar en Firestore /usuarios/{uid}.fcmToken
-      await updateDoc(doc(firestoreDb, 'usuarios', uid), {
-        fcmToken:      token,
-        fcmUpdatedAt:  serverTimestamp(),
+      await updateDoc(doc(db, 'usuarios', myUid), {
+        fcmToken:     token,
+        fcmUpdatedAt: serverTimestamp(),
       });
       console.log('[SyncU FCM] Token guardado:', token.slice(0, 20) + '…');
 
-      // Mostrar notificaciones en primer plano (app abierta)
+      // Handle foreground messages
       onMessage(messaging, function(payload) {
         const notif = payload.notification || {};
         showInAppBanner(notif.title || 'SyncU ⚡', notif.body || '');
       });
 
     } catch (err) {
-      console.warn('[SyncU FCM] Error al inicializar:', err);
+      console.warn('[SyncU FCM] Error al registrar token:', err);
     }
   }
 
