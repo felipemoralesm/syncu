@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="../css/estilos.css" />
+
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -606,7 +606,7 @@
       const f = friendDocs.find(x => x.uid === uid);
       participants = [
         { uid: myUid, nombre: 'Yo' },
-        { uid, nombre: f?.nombre || uid }
+        { uid: uid, nombre: (f ? f.nombre : uid) }
       ];
     } else {
       const gid = document.getElementById('grupoSelect').value;
@@ -615,7 +615,7 @@
       participants = grupo.miembros.map(uid => {
         if (uid === myUid) return { uid, nombre: 'Yo' };
         const f = friendDocs.find(x => x.uid === uid);
-        return { uid, nombre: f?.nombre || uid };
+        return { uid: uid, nombre: (f ? f.nombre : uid) };
       });
     }
 
@@ -628,19 +628,21 @@
     try {
       // Fetch all schedules
       const schedules = {};
-      for (const p of participants) {
-        setCalcStep(`Obteniendo horario de ${p.nombre}…`);
+      for (let _pi = 0; _pi < participants.length; _pi++) {
+        const p = participants[_pi];
+        setCalcStep('Obteniendo horario de ' + p.nombre + '…');
         const snap = await getDoc(doc(db, 'horarios', p.uid));
-        schedules[p.uid] = snap.exists() ? snap.data() : { bloques: [], diasLibresHoy: [] };
+        schedules[p.uid] = snap.exists() ? snap.data() : { events: [] };
       }
 
       setCalcStep('Calculando intersección…');
-      await delay(400); // brief pause so user sees the step
+      await delay(400);
 
-      const freeMap = computeIntersection(schedules, participants.map(p => p.uid));
+      const uids = participants.map(function(p) { return p.uid; });
+      const freeIntervals = computeIntersection(schedules, uids);
 
       document.getElementById('calculating').classList.remove('show');
-      renderResults(freeMap, participants);
+      renderResults(freeIntervals, participants);
 
     } catch(e) {
       document.getElementById('calculating').classList.remove('show');
@@ -655,119 +657,188 @@
     document.getElementById('calcStep').textContent = msg;
   }
 
-  // ── Intersection engine ──────────────────────────────────
-  // Returns a Set of `dia|hora` strings where ALL users are free
+  // ═══════════════════════════════════════════════════════
+  //  INTERSECTION ENGINE v2
+  //  Reads events[] with {dia:[], inicio:"HH:MM", fin:"HH:MM"}
+  //  Returns per-day array of merged free intervals (minutes)
+  // ═══════════════════════════════════════════════════════
+
+  const DAY_START = 6 * 60;   // 360 min
+  const DAY_END   = 20 * 60;  // 1200 min
+  const MIN_FREE  = 10;       // ignore gaps < 10 min
+
+  function timeToMin(t) {
+    if (!t || !t.includes(':')) return 0;
+    const parts = t.split(':');
+    return parseInt(parts[0]) * 60 + parseInt(parts[1]);
+  }
+  function minToHHMM(m) {
+    const h = Math.floor(m / 60);
+    const min = m % 60;
+    return (h < 10 ? '0' : '') + h + ':' + (min < 10 ? '0' : '') + min;
+  }
+
+  // Build sorted list of [startMin, endMin] occupied intervals for one user on one day
+  function buildOccupied(events, dia) {
+    const intervals = [];
+    (events || []).forEach(ev => {
+      const dias = ev.dia || [];
+      if (dias.indexOf(dia) === -1) return;
+      const s = timeToMin(ev.inicio);
+      const e = timeToMin(ev.fin);
+      if (e > s) intervals.push([s, e]);
+    });
+    // Sort by start
+    intervals.sort(function(a, b) { return a[0] - b[0]; });
+    // Merge overlapping
+    const merged = [];
+    intervals.forEach(function(iv) {
+      if (!merged.length || iv[0] >= merged[merged.length - 1][1]) {
+        merged.push([iv[0], iv[1]]);
+      } else {
+        merged[merged.length - 1][1] = Math.max(merged[merged.length - 1][1], iv[1]);
+      }
+    });
+    return merged;
+  }
+
+  // Invert occupied intervals → free intervals within [DAY_START, DAY_END]
+  function invertToFree(occupied) {
+    const free = [];
+    let cursor = DAY_START;
+    occupied.forEach(function(iv) {
+      if (iv[0] > cursor) free.push([cursor, iv[0]]);
+      cursor = Math.max(cursor, iv[1]);
+    });
+    if (cursor < DAY_END) free.push([cursor, DAY_END]);
+    return free;
+  }
+
+  // Intersect two lists of free intervals
+  function intersectFree(a, b) {
+    const result = [];
+    let i = 0, j = 0;
+    while (i < a.length && j < b.length) {
+      const start = Math.max(a[i][0], b[j][0]);
+      const end   = Math.min(a[i][1], b[j][1]);
+      if (end > start) result.push([start, end]);
+      if (a[i][1] < b[j][1]) i++; else j++;
+    }
+    return result;
+  }
+
+  // Main: returns { dia: [[startMin, endMin], ...], ... } for meaningful free slots
   function computeIntersection(schedules, uids) {
-    // For each uid, build a Set of OCCUPIED slots
-    // A slot is occupied if it appears in bloques AND is NOT marked libre
-    // (libre=true means user toggled "hoy no tengo clase", so they ARE free)
-    const occupiedPerUser = {};
+    // schedules[uid] = { events: [...] }
+    const result = {};   // dia -> [[s,e],...]
+    const totalSlots = { count: 0 };
 
-    uids.forEach(uid => {
-      const data = schedules[uid];
-      const diasLibresHoy = new Set(data.diasLibresHoy || []);
-      const occupied = new Set();
+    DIAS.forEach(function(dia) {
+      // Build free intervals per user for this day
+      let commonFree = [[DAY_START, DAY_END]]; // start fully free
 
-      (data.bloques || []).forEach(b => {
-        // If the dia is marked as libre hoy, slot is free despite being in bloques
-        if (diasLibresHoy.has(b.dia)) return;
-        // If slot itself is marked libre, it's free
-        if (b.libre) return;
-        occupied.add(`${b.dia}|${b.hora}`);
+      uids.forEach(function(uid) {
+        const data   = schedules[uid] || {};
+        const events = data.events || [];
+        const occ    = buildOccupied(events, dia);
+        const free   = invertToFree(occ);
+        commonFree   = intersectFree(commonFree, free);
       });
 
-      occupiedPerUser[uid] = occupied;
+      // Filter out gaps smaller than MIN_FREE minutes
+      const meaningful = commonFree.filter(function(iv) {
+        return (iv[1] - iv[0]) >= MIN_FREE;
+      });
+
+      result[dia] = meaningful;
+      totalSlots.count += meaningful.length;
     });
 
-    // A slot is FREE for everyone if no user has it occupied
-    const allSlots = new Set();
-    DIAS.forEach(dia => HOURS.forEach(hora => allSlots.add(`${dia}|${hora}`)));
-
-    const freeForAll = new Set();
-    allSlots.forEach(slot => {
-      const allFree = uids.every(uid => !occupiedPerUser[uid].has(slot));
-      if (allFree) freeForAll.add(slot);
-    });
-
-    return freeForAll;
+    result._totalSlots = totalSlots.count;
+    return result;
   }
 
   // ── Render results ───────────────────────────────────────
-  function renderResults(freeMap, participants) {
+  function renderResults(freeIntervals, participants) {
     const panel = document.getElementById('resultsPanel');
 
     // Participants row
     const pRow = document.getElementById('participantsRow');
     pRow.innerHTML = '';
-    participants.forEach(p => {
-      const chip = document.createElement('div');
+    participants.forEach(function(p) {
+      const chip  = document.createElement('div');
       chip.className = 'p-chip';
       const color = p.uid === myUid ? '#FF6B00' : avatarColor(p.uid);
-      chip.innerHTML = `<div class="p-dot" style="background:${color}"></div>${p.nombre}`;
+      chip.innerHTML = '<div class="p-dot" style="background:' + color + '"></div>' + p.nombre;
       pRow.appendChild(chip);
     });
 
-    // Summary
-    const count = freeMap.size;
-    const summary = document.getElementById('summaryArea');
-    if (count === 0) {
-      summary.innerHTML = `
-        <div class="no-overlap">
-          <div class="no-overlap-icon">😬</div>
-          No encontramos espacios libres en común esta semana.
-          <br><br>
-          <span style="font-size:.72rem">Intenta con menos personas o revisa si los horarios están guardados.</span>
-        </div>`;
+    const totalSlots = freeIntervals._totalSlots || 0;
+    const summary    = document.getElementById('summaryArea');
+
+    if (totalSlots === 0) {
+      summary.innerHTML =
+        '<div class="no-overlap">' +
+          '<div class="no-overlap-icon">😬</div>' +
+          'No encontramos espacios libres en común esta semana.<br><br>' +
+          '<span style="font-size:.72rem">Intenta con menos personas o revisa si los horarios están guardados.</span>' +
+        '</div>';
     } else {
-      const nombres = participants.filter(p => p.uid !== myUid).map(p => p.nombre.split(' ')[0]);
-      const conQuien = nombres.length === 1 ? `con ${nombres[0]}` : `con el grupo`;
-      summary.innerHTML = `
-        <div class="summary-banner">
-          <div class="summary-icon">🎉</div>
-          <div>
-            <div class="summary-count">${count} espacios libres</div>
-            <div class="summary-sub">Tienes ${count} bloques libres ${conQuien} esta semana</div>
-          </div>
-        </div>`;
+      const otros    = participants.filter(function(p) { return p.uid !== myUid; });
+      const conQuien = otros.length === 1 ? 'con ' + otros[0].nombre.split(' ')[0] : 'con el grupo';
+      summary.innerHTML =
+        '<div class="summary-banner">' +
+          '<div class="summary-icon">🎉</div>' +
+          '<div>' +
+            '<div class="summary-count">' + totalSlots + ' espacios libres</div>' +
+            '<div class="summary-sub">Tienes ' + totalSlots + ' huecos compartidos ' + conQuien + ' esta semana</div>' +
+          '</div>' +
+        '</div>';
     }
 
     // Best moment today
     const bestArea = document.getElementById('bestTodayArea');
     if (!TODAY_DIA) {
-      bestArea.innerHTML = `<div class="no-today">📅 Hoy es fin de semana — no hay clases</div>`;
+      bestArea.innerHTML = '<div class="no-today">📅 Hoy es fin de semana — no hay clases</div>';
     } else {
-      const todayFree = HOURS
-        .filter(hora => freeMap.has(`${TODAY_DIA}|${hora}`))
-        .sort();
-
-      // Find the next one from now
-      const nowH = new Date().getHours();
-      const next = todayFree.find(h => parseInt(h) >= nowH) || todayFree[0];
-
-      if (!next) {
-        bestArea.innerHTML = `<div class="no-today">😅 Hoy no hay espacios libres en común</div>`;
+      const todaySlots = freeIntervals[TODAY_DIA] || [];
+      const nowMin     = new Date().getHours() * 60 + new Date().getMinutes();
+      // Find first upcoming slot today
+      let bestSlot = null;
+      for (let i = 0; i < todaySlots.length; i++) {
+        if (todaySlots[i][1] > nowMin) { bestSlot = todaySlots[i]; break; }
+      }
+      if (!bestSlot) {
+        bestArea.innerHTML = '<div class="no-today">😅 Hoy no hay espacios libres en común</div>';
       } else {
-        const nextH = parseInt(next);
-        const upcoming = nextH >= nowH;
-        const label = upcoming ? 'Próximo espacio libre hoy' : 'Espacio libre hoy';
-        const end = `${nextH + 1}:00`;
-        bestArea.innerHTML = `
-          <div class="best-today">
-            <div class="best-today-icon">⏰</div>
-            <div>
-              <div class="best-today-label">${label}</div>
-              <div class="best-today-time">${next} – ${end}</div>
-              <div class="best-today-sub">${DIAS_S[TODAY_IDX]} · ${upcoming ? 'En aprox. ' + Math.max(0, nextH - nowH) + 'h' : 'Pasado'}</div>
-            </div>
-          </div>`;
+        const startStr   = minToHHMM(bestSlot[0]);
+        const endStr     = minToHHMM(bestSlot[1]);
+        const durMin     = bestSlot[1] - bestSlot[0];
+        const durLabel   = durMin >= 60
+          ? Math.floor(durMin / 60) + 'h ' + (durMin % 60 ? durMin % 60 + 'min' : '')
+          : durMin + 'min';
+        const upcoming   = bestSlot[0] > nowMin;
+        const minsAway   = Math.max(0, bestSlot[0] - nowMin);
+        const awayLabel  = upcoming
+          ? (minsAway < 60 ? 'En ' + minsAway + ' min' : 'En ' + Math.floor(minsAway/60) + 'h')
+          : 'En curso';
+        bestArea.innerHTML =
+          '<div class="best-today">' +
+            '<div class="best-today-icon">⏰</div>' +
+            '<div>' +
+              '<div class="best-today-label">Próximo espacio libre hoy</div>' +
+              '<div class="best-today-time">' + startStr + ' – ' + endStr + '</div>' +
+              '<div class="best-today-sub">' + DIAS_S[TODAY_IDX] + ' · ' + durLabel.trim() + ' · ' + awayLabel + '</div>' +
+            '</div>' +
+          '</div>';
       }
     }
 
-    // Show grid
-    if (count > 0) {
+    // Grid
+    if (totalSlots > 0) {
       document.getElementById('gridLabel').style.display = '';
       document.getElementById('gridWrap').style.display  = '';
-      buildGrid(freeMap);
+      buildGrid(freeIntervals);
     } else {
       document.getElementById('gridLabel').style.display = 'none';
       document.getElementById('gridWrap').style.display  = 'none';
@@ -777,51 +848,104 @@
     panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
-  // ── Build result grid ────────────────────────────────────
-  function buildGrid(freeMap) {
+  // ── Build result grid (pixel-accurate, continuous bars) ──
+  function buildGrid(freeIntervals) {
     const grid = document.getElementById('scheduleGrid');
     grid.innerHTML = '';
 
-    // Determine best slot (most future today, or first of week)
-    const nowH = new Date().getHours();
-    let bestSlot = null;
-    if (TODAY_DIA) {
-      bestSlot = HOURS
-        .filter(h => freeMap.has(`${TODAY_DIA}|${h}`) && parseInt(h) >= nowH)
-        .map(h => `${TODAY_DIA}|${h}`)[0] || null;
-    }
+    // Grid uses 15-min rows from 6:00 to 20:00 (56 rows)
+    const SLOT_MIN    = 15;
+    const TOTAL_SLOTS = (DAY_END - DAY_START) / SLOT_MIN; // 56
+    const ROW_H       = 10; // px per 15-min slot
 
     // Header
-    const emptyHead = document.createElement('div');
-    emptyHead.className = 'col-header';
-    grid.appendChild(emptyHead);
-    DIAS.forEach((dia, i) => {
+    const th = document.createElement('div');
+    th.className = 'col-header';
+    grid.appendChild(th);
+    DIAS.forEach(function(dia, i) {
       const h = document.createElement('div');
-      h.className = `col-header ${i === TODAY_IDX ? 'today' : ''}`;
+      h.className = 'col-header' + (i === TODAY_IDX ? ' today' : '');
       h.textContent = DIAS_S[i];
       grid.appendChild(h);
     });
 
-    // Rows
-    HOURS.forEach(hora => {
+    // Time-label + cells per row
+    for (let s = 0; s < TOTAL_SLOTS; s++) {
+      const absMin = DAY_START + s * SLOT_MIN;
+      const isHour = absMin % 60 === 0;
+
       const lbl = document.createElement('div');
       lbl.className = 'time-label';
-      lbl.textContent = hora;
+      lbl.style.height = ROW_H + 'px';
+      if (isHour) lbl.textContent = minToHHMM(absMin);
+      else lbl.style.color = 'transparent';
       grid.appendChild(lbl);
 
-      DIAS.forEach(dia => {
-        const slot = `${dia}|${hora}`;
+      DIAS.forEach(function(dia) {
         const cell = document.createElement('div');
-        const isFree = freeMap.has(slot);
-        cell.className = `cell${isFree ? ' free' : ''}`;
-        if (isFree && slot === bestSlot) cell.classList.add('best-slot');
-
-        if (isFree) {
-          cell.addEventListener('click', e => showTooltip(e, '¡Todos libres aquí!'));
-          cell.addEventListener('mouseleave', hideTooltip);
-          cell.addEventListener('touchend',   hideTooltip);
-        }
+        cell.className = 'cell' + (isHour ? ' hour-top' : '');
+        cell.style.height = ROW_H + 'px';
         grid.appendChild(cell);
+      });
+    }
+
+    // Overlay free intervals as absolutely-positioned orange bars
+    // We need a positioned container per column
+    // Approach: re-select cells by (dia, slot) using data attributes set below
+    // Simpler: draw bars as children of a column overlay div
+
+    // Create column overlays
+    const colOverlays = {};
+    DIAS.forEach(function(dia, colIdx) {
+      const overlay = document.createElement('div');
+      overlay.style.cssText =
+        'position:absolute;top:' + ROW_H + 'px;' + // skip header row
+        'left:0;right:0;pointer-events:none;';
+      overlay.dataset.dia = dia;
+      colOverlays[dia] = overlay;
+    });
+
+    // Wrap grid in relative container if not already
+    grid.style.position = 'relative';
+
+    // Calculate column positions (header=col0, then 5 data cols)
+    // We'll draw bars inside each column cell column by computing offsets
+    // Simpler alternative: append bars directly to grid with grid-column
+
+    // Draw each free interval as a highlighted row range
+    const nowMin = new Date().getHours() * 60 + new Date().getMinutes();
+
+    DIAS.forEach(function(dia, colIdx) {
+      const slots = freeIntervals[dia] || [];
+      slots.forEach(function(iv) {
+        const startSlot = Math.round((iv[0] - DAY_START) / SLOT_MIN);
+        const endSlot   = Math.round((iv[1] - DAY_START) / SLOT_MIN);
+
+        // Find cells in this column and mark them free
+        for (let s = startSlot; s < endSlot && s < TOTAL_SLOTS; s++) {
+          // Each row = 1 label + 5 cells; row index s, col index colIdx
+          // Grid items: row 0 = header (6 items), row s+1 = s-th data row
+          // Item index in grid = (s+1)*6 + (colIdx+1)  (0-based)
+          // But we already appended them — select by position
+          const rowStart = s + 1; // 1-based because of header row
+          const cellIndex = rowStart * 6 + (colIdx + 1); // 6 cols total
+          const cells = grid.children;
+          if (cellIndex < cells.length) {
+            const cell = cells[cellIndex];
+            cell.classList.add('free');
+            // Best slot: first upcoming today
+            if (dia === TODAY_DIA && iv[0] >= nowMin && !grid.querySelector('.best-slot')) {
+              cell.classList.add('best-slot');
+            }
+            cell.addEventListener('click', (function(startMin, endMin) {
+              return function(e) {
+                showTooltip(e, '¡Libres ' + minToHHMM(startMin) + '–' + minToHHMM(endMin) + '!');
+              };
+            })(iv[0], iv[1]));
+            cell.addEventListener('mouseleave', hideTooltip);
+            cell.addEventListener('touchend',   hideTooltip);
+          }
+        }
       });
     });
   }
