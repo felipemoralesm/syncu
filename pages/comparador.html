@@ -252,85 +252,72 @@
     }
     .p-dot { width: 8px; height: 8px; border-radius: 50%; }
 
-    /* ── Grid ── */
+    /* ── Grid (continuous-bar layout) ── */
     .grid-wrap {
       overflow-x: auto; padding: 0 1rem 1rem;
       scrollbar-width: thin; scrollbar-color: #2a2a2a transparent;
     }
-    .schedule-grid {
-      display: grid;
-      grid-template-columns: 40px repeat(5, 1fr);
-      min-width: 300px;
-      border: 1px solid var(--border);
-      border-radius: 14px; overflow: hidden;
+    .sched-table {
+      display: flex; min-width: 300px;
+      border: 1px solid var(--border); border-radius: 14px; overflow: hidden;
     }
-
-    /* Header */
-    .col-header {
-      background: var(--card); padding: 0.45rem 0;
-      text-align: center; font-size: 0.62rem; font-weight: 700;
-      letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted);
-      border-bottom: 1px solid var(--border);
+    .sched-time-col {
+      width: 36px; flex-shrink: 0;
+      background: var(--card); border-right: 1px solid var(--border);
+      position: relative;
     }
-    .col-header.today { color: var(--orange); }
-
-    /* Time label */
-    .time-label {
-      background: var(--card); font-size: 0.58rem; color: var(--muted);
-      display: flex; align-items: flex-start; justify-content: flex-end;
-      padding: 3px 5px 0 0;
-      border-bottom: 1px solid var(--border);
-      border-right: 1px solid var(--border);
+    .sched-time-header { height: 26px; border-bottom: 1px solid var(--border); background: var(--card); }
+    .sched-time-body { position: relative; }
+    .sched-time-tick {
+      position: absolute; right: 4px;
+      font-size: 0.5rem; color: var(--muted);
+      line-height: 1; transform: translateY(-50%);
     }
-
-    /* Cell base */
-    .cell {
-      height: 44px; border-bottom: 1px solid var(--border);
-      border-right: 1px solid var(--border);
-      position: relative; cursor: default;
-      background: #111;
-      transition: filter 0.15s;
+    .sched-day-col {
+      flex: 1; border-right: 1px solid var(--border);
+      display: flex; flex-direction: column; min-width: 0;
     }
-    .cell:last-child { border-right: none; }
-
-    /* Free cell */
-    .cell.free {
-      background: rgba(255,107,0,0.18);
-      cursor: pointer;
+    .sched-day-col:last-child { border-right: none; }
+    .sched-day-header {
+      height: 26px; display: flex; align-items: center; justify-content: center;
+      font-size: 0.6rem; font-weight: 700; letter-spacing: 0.07em;
+      text-transform: uppercase; color: var(--muted);
+      background: var(--card); border-bottom: 1px solid var(--border); flex-shrink: 0;
     }
-    .cell.free::after {
-      content: '';
-      position: absolute; inset: 2px;
-      border-radius: 5px;
-      background: var(--orange);
-      opacity: 0.55;
-      transition: opacity 0.15s;
+    .sched-day-header.today { color: var(--orange); }
+    .sched-day-body {
+      flex: 1; background: #111; position: relative; overflow: hidden;
     }
-    .cell.free:hover::after { opacity: 0.8; }
-
-    /* Pulse on free cells */
-    .cell.free.best-slot::after {
-      background: var(--orange);
-      opacity: 0.85;
-      box-shadow: 0 0 10px rgba(255,107,0,0.6);
+    .sched-hour-line {
+      position: absolute; left: 0; right: 0; height: 1px;
+      background: rgba(255,255,255,0.05);
+    }
+    .sched-free-bar {
+      position: absolute; left: 2px; right: 2px; border-radius: 5px;
+      background: var(--orange); opacity: 0.75; cursor: pointer;
+      transition: opacity 0.15s, box-shadow 0.15s;
+      display: flex; align-items: center; justify-content: center; overflow: hidden;
+    }
+    .sched-free-bar:hover { opacity: 1; box-shadow: 0 0 12px rgba(255,107,0,0.6); }
+    .sched-free-bar.best-slot {
+      opacity: 0.9; box-shadow: 0 0 14px rgba(255,107,0,0.7);
       animation: glow 1.8s ease-in-out infinite;
     }
     @keyframes glow {
-      0%,100% { opacity:.85; box-shadow: 0 0 10px rgba(255,107,0,0.6); }
-      50%      { opacity:1;   box-shadow: 0 0 20px rgba(255,107,0,0.9); }
+      0%,100% { box-shadow: 0 0 10px rgba(255,107,0,0.6); }
+      50%      { box-shadow: 0 0 22px rgba(255,107,0,0.9); }
     }
-
-    /* Tooltip */
+    .sched-free-label {
+      font-size: 0.52rem; font-weight: 700; color: rgba(255,255,255,0.9);
+      text-align: center; padding: 0 2px; white-space: nowrap;
+      overflow: hidden; text-overflow: ellipsis; pointer-events: none;
+    }
     .tooltip {
-      position: fixed; z-index: 200;
-      background: #fff; color: #000;
-      font-family: 'Space Grotesk', sans-serif;
-      font-size: 0.72rem; font-weight: 700;
+      position: fixed; z-index: 200; background: #fff; color: #000;
+      font-family: 'Space Grotesk', sans-serif; font-size: 0.72rem; font-weight: 700;
       padding: 0.35rem 0.75rem; border-radius: 8px;
-      pointer-events: none; white-space: nowrap;
-      transform: translateX(-50%);
-      box-shadow: 0 4px 16px rgba(0,0,0,0.4);
-      opacity: 0; transition: opacity 0.15s;
+      pointer-events: none; white-space: nowrap; transform: translateX(-50%);
+      box-shadow: 0 4px 16px rgba(0,0,0,0.4); opacity: 0; transition: opacity 0.15s;
     }
     .tooltip.visible { opacity: 1; }
     .tooltip::after {
@@ -461,7 +448,7 @@
 
     <!-- Grid -->
     <div class="grid-wrap" id="gridWrap" style="display:none">
-      <div class="schedule-grid" id="scheduleGrid"></div>
+      <div class="sched-table" id="scheduleGrid"></div>
     </div>
 
   </div>
@@ -848,105 +835,113 @@
     panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
-  // ── Build result grid (pixel-accurate, continuous bars) ──
+  // ── Build result grid — one solid bar per free interval ──
   function buildGrid(freeIntervals) {
-    const grid = document.getElementById('scheduleGrid');
+    var grid = document.getElementById('scheduleGrid');
     grid.innerHTML = '';
 
-    // Grid uses 15-min rows from 6:00 to 20:00 (56 rows)
-    const SLOT_MIN    = 15;
-    const TOTAL_SLOTS = (DAY_END - DAY_START) / SLOT_MIN; // 56
-    const ROW_H       = 10; // px per 15-min slot
+    // px per minute of schedule time
+    var TOTAL_MIN = DAY_END - DAY_START;  // 840 min (6:00–20:00)
+    var BODY_H    = 420;                  // total body height in px
+    var PX_PER_MIN = BODY_H / TOTAL_MIN; // 0.5 px/min
 
-    // Header
-    const th = document.createElement('div');
-    th.className = 'col-header';
-    grid.appendChild(th);
-    DIAS.forEach(function(dia, i) {
-      const h = document.createElement('div');
-      h.className = 'col-header' + (i === TODAY_IDX ? ' today' : '');
-      h.textContent = DIAS_S[i];
-      grid.appendChild(h);
-    });
+    var nowMin = new Date().getHours() * 60 + new Date().getMinutes();
+    var foundBest = false;
 
-    // Time-label + cells per row
-    for (let s = 0; s < TOTAL_SLOTS; s++) {
-      const absMin = DAY_START + s * SLOT_MIN;
-      const isHour = absMin % 60 === 0;
+    // ── Time axis column ─────────────────────────────────
+    var timeCol = document.createElement('div');
+    timeCol.className = 'sched-time-col';
 
-      const lbl = document.createElement('div');
-      lbl.className = 'time-label';
-      lbl.style.height = ROW_H + 'px';
-      if (isHour) lbl.textContent = minToHHMM(absMin);
-      else lbl.style.color = 'transparent';
-      grid.appendChild(lbl);
+    var timeHeader = document.createElement('div');
+    timeHeader.className = 'sched-time-header';
+    timeCol.appendChild(timeHeader);
 
-      DIAS.forEach(function(dia) {
-        const cell = document.createElement('div');
-        cell.className = 'cell' + (isHour ? ' hour-top' : '');
-        cell.style.height = ROW_H + 'px';
-        grid.appendChild(cell);
-      });
+    var timeBody = document.createElement('div');
+    timeBody.className = 'sched-time-body';
+    timeBody.style.height = BODY_H + 'px';
+    timeBody.style.position = 'relative';
+
+    // Draw hour ticks
+    for (var h = 6; h <= 20; h++) {
+      var tick = document.createElement('div');
+      tick.className = 'sched-time-tick';
+      var topPx = (h * 60 - DAY_START) * PX_PER_MIN;
+      tick.style.top = topPx + 'px';
+      tick.textContent = h + ':00';
+      timeBody.appendChild(tick);
     }
+    timeCol.appendChild(timeBody);
+    grid.appendChild(timeCol);
 
-    // Overlay free intervals as absolutely-positioned orange bars
-    // We need a positioned container per column
-    // Approach: re-select cells by (dia, slot) using data attributes set below
-    // Simpler: draw bars as children of a column overlay div
-
-    // Create column overlays
-    const colOverlays = {};
+    // ── Day columns ───────────────────────────────────────
     DIAS.forEach(function(dia, colIdx) {
-      const overlay = document.createElement('div');
-      overlay.style.cssText =
-        'position:absolute;top:' + ROW_H + 'px;' + // skip header row
-        'left:0;right:0;pointer-events:none;';
-      overlay.dataset.dia = dia;
-      colOverlays[dia] = overlay;
-    });
+      var col = document.createElement('div');
+      col.className = 'sched-day-col';
 
-    // Wrap grid in relative container if not already
-    grid.style.position = 'relative';
+      // Header
+      var hdr = document.createElement('div');
+      hdr.className = 'sched-day-header' + (colIdx === TODAY_IDX ? ' today' : '');
+      hdr.textContent = DIAS_S[colIdx];
+      col.appendChild(hdr);
 
-    // Calculate column positions (header=col0, then 5 data cols)
-    // We'll draw bars inside each column cell column by computing offsets
-    // Simpler alternative: append bars directly to grid with grid-column
+      // Body — dark background
+      var body = document.createElement('div');
+      body.className = 'sched-day-body';
+      body.style.height = BODY_H + 'px';
 
-    // Draw each free interval as a highlighted row range
-    const nowMin = new Date().getHours() * 60 + new Date().getMinutes();
+      // Subtle hour separator lines
+      for (var hh = 6; hh <= 20; hh++) {
+        var line = document.createElement('div');
+        line.className = 'sched-hour-line';
+        line.style.top = ((hh * 60 - DAY_START) * PX_PER_MIN) + 'px';
+        body.appendChild(line);
+      }
 
-    DIAS.forEach(function(dia, colIdx) {
-      const slots = freeIntervals[dia] || [];
-      slots.forEach(function(iv) {
-        const startSlot = Math.round((iv[0] - DAY_START) / SLOT_MIN);
-        const endSlot   = Math.round((iv[1] - DAY_START) / SLOT_MIN);
+      // Draw one orange bar per meaningful free interval (> 15 min)
+      var intervals = freeIntervals[dia] || [];
+      intervals.forEach(function(iv) {
+        var dur = iv[1] - iv[0];
+        if (dur <= 15) return; // skip micro-gaps
 
-        // Find cells in this column and mark them free
-        for (let s = startSlot; s < endSlot && s < TOTAL_SLOTS; s++) {
-          // Each row = 1 label + 5 cells; row index s, col index colIdx
-          // Grid items: row 0 = header (6 items), row s+1 = s-th data row
-          // Item index in grid = (s+1)*6 + (colIdx+1)  (0-based)
-          // But we already appended them — select by position
-          const rowStart = s + 1; // 1-based because of header row
-          const cellIndex = rowStart * 6 + (colIdx + 1); // 6 cols total
-          const cells = grid.children;
-          if (cellIndex < cells.length) {
-            const cell = cells[cellIndex];
-            cell.classList.add('free');
-            // Best slot: first upcoming today
-            if (dia === TODAY_DIA && iv[0] >= nowMin && !grid.querySelector('.best-slot')) {
-              cell.classList.add('best-slot');
-            }
-            cell.addEventListener('click', (function(startMin, endMin) {
-              return function(e) {
-                showTooltip(e, '¡Libres ' + minToHHMM(startMin) + '–' + minToHHMM(endMin) + '!');
-              };
-            })(iv[0], iv[1]));
-            cell.addEventListener('mouseleave', hideTooltip);
-            cell.addEventListener('touchend',   hideTooltip);
-          }
+        var topPx  = (iv[0] - DAY_START) * PX_PER_MIN;
+        var heightPx = dur * PX_PER_MIN;
+
+        var bar = document.createElement('div');
+        bar.className = 'sched-free-bar';
+        bar.style.top    = topPx + 'px';
+        bar.style.height = heightPx + 'px';
+
+        // Mark best slot: first interval today that is upcoming or in progress
+        if (dia === TODAY_DIA && !foundBest && iv[1] > nowMin) {
+          bar.classList.add('best-slot');
+          foundBest = true;
         }
+
+        // Label inside bar (only if tall enough)
+        if (heightPx >= 22) {
+          var lbl = document.createElement('div');
+          lbl.className = 'sched-free-label';
+          var durLabel = dur >= 60
+            ? Math.floor(dur/60) + 'h' + (dur%60 ? dur%60+'m' : '')
+            : dur + 'min';
+          lbl.textContent = minToHHMM(iv[0]) + ' ' + durLabel;
+          bar.appendChild(lbl);
+        }
+
+        // Tooltip on tap/click
+        bar.addEventListener('click', (function(startM, endM) {
+          return function(e) {
+            showTooltip(e, '¡Libres ' + minToHHMM(startM) + '–' + minToHHMM(endM) + '!');
+          };
+        })(iv[0], iv[1]));
+        bar.addEventListener('mouseleave', hideTooltip);
+        bar.addEventListener('touchend', hideTooltip);
+
+        body.appendChild(bar);
       });
+
+      col.appendChild(body);
+      grid.appendChild(col);
     });
   }
 
